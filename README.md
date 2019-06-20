@@ -18,7 +18,30 @@ _in progress....._
    "DBtable": "testTable",
    "DBuser" : "testDB",
    "DBpass" : "TestPass",
-   "HTTPport" : 3000
+   "HTTPport" : 3000,
+   "DBaccepted": [
+    "testDB",
+    "testDB2",
+    ],
+    "DBsystem": [
+        "mysql",
+        "information_schema",
+        "performance_schema"
+    ],
+    "MySQLEventSkip": [
+        "testDB1_testTable1_testColumn1"
+        "testDB1_testTable1_testColumn2"
+        "testDB1_testTable2_testColumn5"
+        "testDB1_testTable2_testColumn6"
+        "testDB1_testTable3_testColumn9"
+        "testDB2_testTable3_testColumn4"
+        "testDB2_testTable3_testColumn5"
+        "testDB2_testTable3_testColumn6"
+        "testDB2_testTable3_testColumn7"
+        "testDB3_testTable1_testColumn1"
+        "testDB3_testTable1_testColumn2"
+        "testDB3_testTable1_testColumn3"
+    ]
 }
 ```
 ### Run :
