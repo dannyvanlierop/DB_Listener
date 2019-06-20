@@ -1,8 +1,12 @@
 # DB_Listener
 
-### Prepare :
+### Environment :
+- node v8.16.0
+- npm 6.4.1
 
-- Create .config.json in root with the following content:
+### Setup :
+
+- Create configuration file ( **.config.json** ) with the following content:
 
 ```JSON
 {
@@ -21,7 +25,7 @@
 - browse to http://127.0.0.1:3000
 
 
-### Target :
+### Goal :
 - Get all columns from table
 - Get the last value from each of this columns
-- Emit this column value
+- Emit this column value to websockets
