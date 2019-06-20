@@ -253,20 +253,21 @@ const program = async () => {
         statement: MySQLEvents.STATEMENTS.ALL,
         onEvent: (event) => {
 
-            switch (event.schema) {
-                //Accept this DBnames
-                case "testDB": ;
-                case "testDB2": ;
-                //case "REST-API": ;
-                case "actionHere":
-                    for (var i = 0; i < Object.keys(event.affectedColumns).length; i++) {
-                        mysqlGetValue(event.schema, event.table, event.affectedColumns[i]);
-                    }
-                    console.log(" event.timestamp:       " + event.timestamp + " -> " + event.schema );
-                    break;
+            if(config.DBaccepted.indexOf(event.schema) > -1) //if databaseName exist in config.DBaccepted
+            {
+                if(config.DBsystem.indexOf(event.schema) === -1) //if databaseName not exist in config.DBsystem
+                {
+                    for (var k = 0; k < Object.keys(event.affectedColumns).length; k++) //for all columns in event.affectedColumns[]
+                    {
+                        var emitterName = event.schema + "_" + event.table + "_" + event.affectedColumns[k]; //The emitterName
 
-                //Skip this DBname
-                default:
+                        if(config.MySQLEventSkip.indexOf(emitterName) === -1) //if emitterName not exist in config.MySQLEventSkip
+                        {
+                            process.stdout.write("\n" + k.toString() + " " + emitterName);
+                            //mysqlGetValue(event.schema, event.table, event.affectedColumns[k]);
+                        }
+                    }
+                }
             }
         },
     });
@@ -277,10 +278,7 @@ const program = async () => {
     //    expression: 'testDB',//<-- database
     //    statement: MySQLEvents.STATEMENTS.ALL,
     //    onEvent: (event) => {
-    //        for (var i = 0; i < Object.keys(event.affectedColumns).length; i++) {
-    //            mysqlGetValue(event.schema, event.table, event.affectedColumns[i]);
-    //        }
-    //        console.log(" event.timestamp:       " + event.timestamp + " -> " + event.schema );
+    //        console.log("event.timestamp: " + event.timestamp );
     //    },
     //});
 

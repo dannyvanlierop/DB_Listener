@@ -1,5 +1,7 @@
 # DB_Listener
 
+_in progress....._
+
 ### Environment :
 - node v8.16.0
 - npm 6.4.1
@@ -26,6 +28,8 @@
 
 
 ### Goal :
-- Get all columns from table
-- Get the last value from each of this columns
-- Emit this column value to websockets
+- Get all Databases.
+- Get all Tables from found Databases.
+- Get all Columns from found Tables.
+- Get the last Value from each Column found.
+- Emit this record value to websockets with ColumnName as triggerName.
