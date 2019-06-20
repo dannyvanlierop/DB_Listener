@@ -25,7 +25,7 @@
                 $("#" + itemName).text(itemValue); 
 
                 //jQuery - itemName to SocketCache string
-                $("#SocketCache").text(SocketCache += itemName + ",");
+                $("#SocketCache").text(SocketCache += itemName + "\n");
 
             });
         });
@@ -33,17 +33,21 @@
     </script>
 
 </head>
-
 <body>
-    <p>id: <a id='id'></a></p>
-    <p>iCounter: <a id='iCounter'></a></p>
-    <p>testCol1: <a id='testCol1'></a></p>
-    <p>testCol2: <a id='testCol2'></a></p>
-    <p>testCol3: <a id='testCol3'></a></p>
-    <p>testCol4: <a id='testCol4'></a></p>
-
+    <p>testDB_testTable_id:       <a id='testDB_testTable_id'></a></p>
+    <p>testDB_testTable_iCounter: <a id='testDB_testTable_iCounter'></a></p>
+    <p>testDB_testTable_testCol1: <a id='testDB_testTable_testCol1'></a></p>
+    <p>testDB_testTable_testCol2: <a id='testDB_testTable_testCol2'></a></p>
+    <p>testDB_testTable_testCol3: <a id='testDB_testTable_testCol3'></a></p>
+    <p>testDB_testTable_testCol4: <a id='testDB_testTable_testCol4'></a></p>
+    <p>testDB2_testTable_col11:   <a id='testDB2_testTable_col11'></a></p>
     <!-- Collected collumn items-->
-    <small>SocketCache: <a id='SocketCache'></a></small>
+
 </body>
- 
+<footer>
+        <hr>
+        <small>Debug:</small>
+        <br/><br/>
+        Socket items: <pre id='SocketCache'></pre>
+</footer>
 </html>
