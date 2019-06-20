@@ -1,0 +1,49 @@
+<html>
+
+<head>
+    <title>Socket.io Test</title>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <!--    <script src="https://cdnjs.cloudflare.com/ajax/libs/json2html/1.2.0/json2html.min.js"></script> -->
+
+    <script>
+
+        //Init socket.io
+        var socket = io.connect();
+
+        //Variable to collect collumnItems
+        var SocketCache = "";
+
+        //on init socket items
+        socket.on('init', function (itemName) { 
+
+            //Create item with itemName
+            socket.on(itemName, function (itemValue) { 
+
+                //jQuery - Add the itemValue to item
+                $("#" + itemName).text(itemValue); 
+
+                //jQuery - itemName to SocketCache string
+                $("#SocketCache").text(SocketCache += itemName + ",");
+
+            });
+        });
+
+    </script>
+
+</head>
+
+<body>
+    <p>id: <a id='id'></a></p>
+    <p>iCounter: <a id='iCounter'></a></p>
+    <p>testCol1: <a id='testCol1'></a></p>
+    <p>testCol2: <a id='testCol2'></a></p>
+    <p>testCol3: <a id='testCol3'></a></p>
+    <p>testCol4: <a id='testCol4'></a></p>
+
+    <!-- Collected collumn items-->
+    <small>SocketCache: <a id='SocketCache'></a></small>
+</body>
+ 
+</html>
