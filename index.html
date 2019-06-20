@@ -15,17 +15,22 @@
         //Variable to collect collumnItems
         var SocketCache = "";
 
+        //Refresh/Clear page after disconnect
+        socket.on('disconnect', function () {
+            document.location.reload();            
+        });
+
         //on init socket items
         socket.on('init', function (itemName) { 
 
             //Create item with itemName
             socket.on(itemName, function (itemValue) { 
 
-                //jQuery - Add the itemValue to item
-                $("#" + itemName).text(itemValue); 
-
                 //jQuery - itemName to SocketCache string
                 $("#SocketCache").text(SocketCache += itemName + "\n");
+
+                //jQuery - Add the itemValue to item
+                $("#" + itemName).text(itemValue); 
 
             });
         });
@@ -48,6 +53,6 @@
         <hr>
         <small>Debug:</small>
         <br/><br/>
-        Socket items: <pre id='SocketCache'></pre>
+        Available socket items: <pre id='SocketCache'></pre>
 </footer>
 </html>

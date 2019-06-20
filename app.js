@@ -54,9 +54,8 @@ var io = require('socket.io').listen(server);
 //Emit values on page refresh or first load
 io.sockets.on('connection', function (socket) {
 
-    //Search for all dbs
-    //Search for all tables
-    console.log("Start init");
+    console.log("client connected");
+    io.sockets.emit('refresh');
     mysqlInit(); // !!!!!!!!!!!!!!!! CHANGE later, instead of a static value
 });
 
@@ -65,32 +64,35 @@ io.sockets.on('connection', function (socket) {
 \**************/    //SQL Query's
 
 var mysql = require('mysql');
+var con = mysql.createConnection({
+    multipleStatements: true,
+    host: config.DBhost,
+    user: config.DBuser,
+    password: config.DBpass,
+    port: config.DBport,
+});
 
 //Init MySQL columns on first website visit or refresh and emit there last value to the socket. 
 function mysqlInit() {
 
-    var DBname = config.DBname;
-    var DBtable = config.DBtable;
-
     //Get all databases
-    function mysqlInitDatabases()
-    {
+    function mysqlInitDatabases() {
         mysqlGetDatabases(function (callbackResult) {
-        
+
             console.log(" USE: ");
             var objectLength = callbackResult.length;
             for (var i = 0; i < objectLength; i++) {
-    
+
                 var DBname = callbackResult[i]["Database"];
-    
-                switch(DBname) {
-                     //Accept this DBnames
-                    case "testDB":;
-                    case "testDB2":;    
+
+                switch (DBname) {
+                    //Accept this DBnames
+                    case "testDB": ;
+                    case "testDB2": ;
                     case "actionHere":
                         console.log(DBname);
                         mysqlInitTables(DBname);
-                    break;
+                        break;
 
                     //Skip this DBname
                     default:
@@ -100,8 +102,7 @@ function mysqlInit() {
     }
     mysqlInitDatabases();
 
-    function mysqlInitTables(DBname)
-    {
+    function mysqlInitTables(DBname) {
         mysqlGetTables(DBname, function (callbackResult) {
 
             var objectLength = callbackResult.length;
@@ -111,13 +112,12 @@ function mysqlInit() {
                 var DBtable = callbackResult[i]["TABLE_NAME"];
                 console.log(DBtable);
 
-                mysqlInitColumns(DBname,DBtable);
+                mysqlInitColumns(DBname, DBtable);
             }
         });
     }
 
-    function mysqlInitColumns(DBname,DBtable)
-    {
+    function mysqlInitColumns(DBname, DBtable) {
         mysqlGetColumns(DBname, DBtable, function (callbackResult) {
 
             var objectLength = callbackResult.length;
@@ -127,175 +127,100 @@ function mysqlInit() {
                 var DBcolumn = callbackResult[i]["COLUMN_NAME"];
                 console.log(DBcolumn);
 
-                mysqlGetValue(DBname,DBtable,DBcolumn);
+                mysqlGetValue(DBname, DBtable, DBcolumn);
             }
         });
     }
 }
 
 //SQL Query - fetch last value by columnName
-function mysqlGetValue(DBname,DBtable,sColumn) {
+function mysqlGetValue(DBname, DBtable, sColumn) {
 
-    var con = mysql.createConnection({
-        multipleStatements: true,
-        host: config.DBhost,
-        user: config.DBuser,
-        password: config.DBpass,
-        port: config.DBport,
-    });
+    //Query = get last value by id from column
+    var sql = "SELECT `" + sColumn + "` FROM `" + DBname + "`.`" + DBtable + "` WHERE `" + sColumn + "` IS NOT NULL ORDER BY `" + sColumn + "` DESC LIMIT 1;";
 
-    con.connect(function (err) {
+    //Query execute
+    con.query(sql, function (err, results) {
 
         //Throw on error
         if (err) throw err;
 
-        //Query = get last value by id from column
-        var sql = "SELECT `" + sColumn + "` FROM `" + DBname + "`.`" + DBtable + "` WHERE `" + sColumn + "` IS NOT NULL ORDER BY `" + sColumn + "` DESC LIMIT 1;";
+        //Return when we have undefined results (empty cells)
+        if (results[0] === undefined) return;
 
-        //Query execute
-        con.query(sql, function (err, results) {
+        var itemName = DBname + "_" + DBtable + "_" + sColumn;
+        var itemValue = results[0][sColumn];
 
-            //Throw on error
-            if (err) throw err;
+        console.log("mysqlGetValue -> " + itemName + " = " + itemValue);
 
-            //Return when we have undefined results (empty cells)
-            if (results[0] === undefined) return;
-
-            var itemName = DBname + "_" + DBtable + "_" + sColumn;
-            var itemValue = results[0][sColumn];          
-
-            console.log("mysqlGetValue -> " + itemName + " = " + itemValue);
-
-            //Emit value to socket
-            io.sockets.emit(itemName, itemValue);
-        })
-    });
+        //Emit value to socket
+        io.sockets.emit(itemName, itemValue);
+    })
 }
 
 //SQL Query - fetch all columns in table
 function mysqlGetColumns(DBname, DBtable, callback) {
 
-    var con = mysql.createConnection({
-        multipleStatements: true,
-        host: config.DBhost,
-        user: config.DBuser,
-        password: config.DBpass,
-        port: config.DBport,
-    });
+    //Query = get all column names from table
+    var sql = "SELECT COLUMN_NAME FROM information_schema.columns WHERE TABLE_SCHEMA = '" + DBname + "' AND TABLE_NAME = '" + DBtable + "';";
 
-    con.connect(function (err) {
+    //Query execute
+    con.query(sql, function (err, results) {
 
         //Throw on error
         if (err) throw err;
 
-        //Query = get all column names from table
-        var sql = "SELECT COLUMN_NAME FROM information_schema.columns WHERE TABLE_SCHEMA = '" + DBname + "' AND TABLE_NAME = '" + DBtable + "';";
+        //Get the amount of columns in table
+        var objectLength = Object.keys(results).length;
 
-        //Query execute
-        con.query(sql, function (err, results) {
+        console.log("mysqlGetColumns -> " + DBname + "_" + DBtable + " " + JSON.stringify(results));
 
-            //Throw on error
-            if (err) throw err;
+        //Init each columnName/itemName as emiter for client
+        for (i = 0; i < objectLength; i++) {
+            var columnName = DBname + "_" + DBtable + "_" + results[i]["COLUMN_NAME"];
+            io.sockets.emit('init', columnName);
+        }
 
-            //Get the amount of columns in table
-            var objectLength = Object.keys(results).length;
-
-            console.log("mysqlGetColumns -> " + DBname + "_" + DBtable + " " + JSON.stringify(results));
-            
-            //Init each columnName/itemName as emiter for client
-            for (i = 0; i < objectLength; i++)
-            {
-                var columnName = DBname + "_" + DBtable + "_" + results[i]["COLUMN_NAME"];
-                io.sockets.emit('init', columnName);
-            }
-
-            //return this query results
-            return callback(results);
-        })
-    });
+        //return this query results
+        return callback(results);
+    })
 }
 
-function mysqlGetTables(DBname,callback) {
+function mysqlGetTables(DBname, callback) {
+    //Query = get all column names from table
+    var sql = "SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_SCHEMA ='" + DBname + "';";
 
-    var con = mysql.createConnection({
-        multipleStatements: true,
-        host: config.DBhost,
-        user: config.DBuser,
-        password: config.DBpass,
-        port: config.DBport,
-    });
-
-    con.connect(function (err) {
+    //Query execute
+    con.query(sql, function (err, results) {
 
         //Throw on error
         if (err) throw err;
 
-        //Query = get all column names from table
-        var sql = "SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_SCHEMA ='" + DBname + "';";
+        //Object with results
+        console.log("mysqlGetTables -> " + DBname + " --> " + JSON.stringify(results));
 
-        //Query execute
-        con.query(sql, function (err, results) {
-
-            //Throw on error
-            if (err) throw err;
-
-            //Object with results
-            console.log("mysqlGetTables -> " + DBname + " --> " + JSON.stringify(results));
-
-            //Get the amount of columns in table
-            var objectLength = Object.keys(results).length;
-
-            //Init each columnName/itemName as emiter for client
-            //for (i = 0; i < objectLength; i++) {
-            //    io.sockets.emit('init', DBname + "_" + results[i]["COLUMN_NAME"]);
-            //}
-
-            //return this query results
-            return callback(results);
-        })
-    });
+        //return this query results
+        return callback(results);
+    })
 }
 
 //SQL Query - fetch all databasesnames from server
 function mysqlGetDatabases(callback) {
+    //Query = get all column names from table
+    var sql = "SHOW DATABASES";
 
-    var con = mysql.createConnection({
-        multipleStatements: true,
-        host: config.DBhost,
-        user: config.DBuser,
-        password: config.DBpass,
-        port: config.DBport,
-    });
-
-    con.connect(function (err) {
+    //Query execute
+    con.query(sql, function (err, results) {
 
         //Throw on error
         if (err) throw err;
 
-        //Query = get all column names from table
-        var sql = "SHOW DATABASES";
+        //Object with results
+        console.log("mysqlGetDatabases -> " + JSON.stringify(results));
 
-        //Query execute
-        con.query(sql, function (err, results) {
-
-            //Throw on error
-            if (err) throw err;
-
-            //Object with results
-            console.log("mysqlGetDatabases -> " + JSON.stringify(results));
-
-            //Get the amount of columns in table
-            var objectLength = Object.keys(results).length;
-
-            //Init each columnName/itemName as emiter for client
-            //for (i = 0; i < objectLength; i++) {
-            //    io.sockets.emit('init', DBname + "_" + results[i]["COLUMN_NAME"]);
-            //}
-
-            //return this query results
-            return callback(results);
-        })
-    });
+        //return this query results
+        return callback(results);
+    })
 }
 
 /**************\
@@ -324,28 +249,40 @@ const program = async () => {
     //add a trigger for sql event (database separated)
     instance.addTrigger({
         name: 'Whole database instance',
-        expression: 'testDB',
+        expression: '*',//<-- all databases
         statement: MySQLEvents.STATEMENTS.ALL,
         onEvent: (event) => {
-            for (var i = 0; i < Object.keys(event.affectedColumns).length; i++) {
-                mysqlGetValue(event.schema, event.table, event.affectedColumns[i]);
+
+            switch (event.schema) {
+                //Accept this DBnames
+                case "testDB": ;
+                case "testDB2": ;
+                //case "REST-API": ;
+                case "actionHere":
+                    for (var i = 0; i < Object.keys(event.affectedColumns).length; i++) {
+                        mysqlGetValue(event.schema, event.table, event.affectedColumns[i]);
+                    }
+                    console.log(" event.timestamp:       " + event.timestamp + " -> " + event.schema );
+                    break;
+
+                //Skip this DBname
+                default:
             }
-            console.log(" event.timestamp:       " + event.timestamp);
         },
     });
 
     //add a trigger for sql event (database separated)
-    instance.addTrigger({
-        name: 'Whole database instance',
-        expression: 'testDB2',
-        statement: MySQLEvents.STATEMENTS.ALL,
-        onEvent: (event) => {
-            for (var i = 0; i < Object.keys(event.affectedColumns).length; i++) {
-                mysqlGetValue(event.schema, event.table, event.affectedColumns[i]);
-            }
-            console.log(" event.timestamp:       " + event.timestamp);
-        },
-    });
+    //instance.addTrigger({
+    //    name: 'Whole database instance',
+    //    expression: 'testDB',//<-- database
+    //    statement: MySQLEvents.STATEMENTS.ALL,
+    //    onEvent: (event) => {
+    //        for (var i = 0; i < Object.keys(event.affectedColumns).length; i++) {
+    //            mysqlGetValue(event.schema, event.table, event.affectedColumns[i]);
+    //        }
+    //        console.log(" event.timestamp:       " + event.timestamp + " -> " + event.schema );
+    //    },
+    //});
 
     //MySQLEvents class emits some events related to its MySQL connection and ZongJi instance
     instance.on(MySQLEvents.EVENTS.CONNECTION_ERROR, console.error);
