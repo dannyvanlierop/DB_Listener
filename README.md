@@ -23,7 +23,7 @@ _in progress....._
     "testDB",
     "testDB2",
     ],
-    "DBsystem": [
+    "DBdenied": [
         "mysql",
         "information_schema",
         "performance_schema"

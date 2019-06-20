@@ -75,47 +75,124 @@ var con = mysql.createConnection({
 //Init MySQL columns on first website visit or refresh and emit there last value to the socket. 
 function mysqlInit() {
 
+    function mysqlInitColumns(DBname, DBtable, callback) {
+
+        mysqlGetColumns(DBname, DBtable, function (callbackResult3) {
+
+            for (var i = 0; i < callbackResult3.length; i++) {
+
+                var DBcolumn = callbackResult3[i]["COLUMN_NAME"];
+                process.stdout.write(" " + DBcolumn);
+
+                if(config.MySQLEventSkip.indexOf(DBname + "_" + DBtable + "_" + DBcolumn ) < 0 )
+                {
+                    mysqlGetValue(DBname, DBtable, DBcolumn,function (callbackResult3) { });
+                }
+            }
+            return callback(callbackResult3);
+        });
+    }
+
+    function mysqlInitTables(DBname, callback) {
+
+        mysqlGetTables(DBname, function (callbackResult2) {
+
+            for (var i = 0; i < callbackResult2.length; i++) {
+
+                var DBtable = callbackResult2[i]["TABLE_NAME"];
+                process.stdout.write(" " + DBtable);
+
+                mysqlInitColumns(DBname, DBtable,function(callback){});
+            }
+            return callback(callbackResult2);
+        });
+    }
+
+    function mysqlInitDatabases(callback) {
     //Get all databases
-    mysqlGetDatabases(function (callbackResult) {
-
-        for (var i = 0; i < callbackResult.length; i++) {
-            var DBname = callbackResult[i];
-            mysqlInitTables(DBname);
-        }
-    });
-
-    function mysqlInitTables(DBname) {
-        console.log();
-        mysqlGetTables(DBname, function (callbackResult) {
+        mysqlGetDatabases(function (callbackResult) {
 
             for (var i = 0; i < callbackResult.length; i++) {
+                
+                var DBname = callbackResult[i];
 
-                var DBtable = callbackResult[i]["TABLE_NAME"];
-                console.log(DBtable);
-
-                mysqlInitColumns(DBname, DBtable);
+                mysqlInitTables(DBname,function(callback){});
             }
+            return callback(callbackResult);
         });
     }
-
-    function mysqlInitColumns(DBname, DBtable) {
-        mysqlGetColumns(DBname, DBtable, function (callbackResult) {
-
-            for (var i = 0; i < callbackResult.length; i++) {
-
-                var DBcolumn = callbackResult[i]["COLUMN_NAME"];
-                console.log(DBcolumn);
-
-                mysqlGetValue(DBname, DBtable, DBcolumn,function (callbackResult) { });
-            }
-        });
-    }
+    mysqlInitDatabases(function(callback){});
 }
+
+////mysqlInitDatabases();
+//mysqlGetDatabases(function (callbackResult) {
+//    
+//    for (var i = 0; i < callbackResult.length; i++) {
+//      
+//        var DBname = callbackResult[i];
+//        //mysqlInitTables(DBname);
+//        mysqlGetTables(DBname, function (callbackResult) {
+//            for (var i = 0; i < callbackResult.length; i++) {
+//                var DBtable = callbackResult[i]["TABLE_NAME"];
+//                process.stdout.write(" " + DBtable);
+//                
+//                //mysqlInitColumns(DBname, DBtable);
+//                mysqlGetColumns(DBname, DBtable, function (callbackResult) {
+//                    for (var i = 0; i < callbackResult.length; i++) {
+//                        
+//                        var DBcolumn = callbackResult[i]["COLUMN_NAME"];
+//                        process.stdout.write(" " + DBcolumn);
+//                        //mysqlGetValue(DBname, DBtable, DBcolumn,function (callbackResult) { });
+//                    }
+//                });
+//            }
+//        });
+//    }
+//});
+
+////Init MySQL columns on first website visit or refresh and emit there last value to the socket. 
+//function mysqlInit() {
+//
+//    //Get all databases
+//    mysqlGetDatabases(function (callbackResult) {
+//
+//        for (var i = 0; i < callbackResult.length; i++) {
+//            var DBname = callbackResult[i];
+//            mysqlInitTables(DBname);
+//        }
+//    });
+//
+//    function mysqlInitTables(DBname, callback) {
+//        mysqlGetTables(DBname, function (callbackResult) {
+//
+//            for (var i = 0; i < callbackResult.length; i++) {
+//
+//                var DBtable = callbackResult[i]["TABLE_NAME"];
+//                process.stdout.write(" " + DBtable);
+//
+//                mysqlInitColumns(DBname, DBtable);
+//            }
+//        });
+//    }
+//
+//    function mysqlInitColumns(DBname, DBtable, callback) {
+//        mysqlGetColumns(DBname, DBtable, function (callbackResult) {
+//
+//            for (var i = 0; i < callbackResult.length; i++) {
+//
+//                var DBcolumn = callbackResult[i]["COLUMN_NAME"];
+//                process.stdout.write(" " + DBcolumn);
+//
+//                mysqlGetValue(DBname, DBtable, DBcolumn,function (callbackResult) { });
+//            }
+//        });
+//    }
+//}
 
 //SQL Query - fetch all databasesnames from server except the ones that are denied within the config file
 function mysqlGetDatabases(callback)
 {
-    //Query = get all column names from table
+    //Query = get all databases from host
     var sql = "SHOW DATABASES";
 
     //Query execute
@@ -154,7 +231,7 @@ function mysqlGetDatabases(callback)
         }
 
         results = resultsCache;
-
+        console.log();
         //return this query results
         return callback(results);
     })
@@ -171,7 +248,7 @@ function mysqlGetTables(DBname, callback) {
         if (err) throw err;
 
         //Object with results
-        console.log( DBname + " --> mysqlGetTables -> " + " --> " + JSON.stringify(results));
+        process.stdout.write("\n--> mysqlGetTables -> " + DBname + " --> " + JSON.stringify(results));
 
         //return this query results
         return callback(results);
@@ -193,12 +270,14 @@ function mysqlGetColumns(DBname, DBtable, callback) {
         //Get the amount of columns in table
         var objectLength = Object.keys(results).length;
 
-        console.log(DBname + " --> " + DBtable + " --> mysqlGetColumns -> " + JSON.stringify(results));
+        process.stdout.write("\n--> mysqlGetColumns -> " + DBname + " --> " + DBtable + JSON.stringify(results));
 
         //Init each columnName/itemName as emiter for client
         for (i = 0; i < objectLength; i++) {
             var columnName = DBname + "_" + DBtable + "_" + results[i]["COLUMN_NAME"];
-            io.sockets.emit('init', columnName);
+
+            //If noy already exist!!!!!!!!!!
+            io.sockets.emit('init', columnName);//TODO <- Check if this already exist, move the cache variable to server
         }
 
         //return this query results
@@ -224,10 +303,10 @@ function mysqlGetValue(DBname, DBtable, sColumn, callback) {
         var itemName = DBname + "_" + DBtable + "_" + sColumn;
         var itemValue = results[0][sColumn];
 
-        console.log("mysqlGetValue -> " + itemName + " = " + itemValue);
+        process.stdout.write("\nmysqlGetValue -> " + itemName + " = " + itemValue);
 
         //Emit value to socket
-        io.sockets.emit(itemName, itemValue);
+        io.sockets.emit(itemName, itemValue);//Maybe only emit new values
 
         return callback(itemValue);
     })
@@ -264,7 +343,7 @@ const program = async () => {
         onEvent: (event) => {
 
             if(config.DBdenied.indexOf(event.schema) > -1)return;
-            if(config.DBaccepted.indexOf(event.schema) === -1)return;
+            else if(config.DBaccepted.indexOf(event.schema) === -1)return;
 
             for (var k = 0; k < Object.keys(event.affectedColumns).length; k++) //for all columns in event.affectedColumns[]
             {
@@ -273,7 +352,7 @@ const program = async () => {
                 if (config.MySQLEventSkip.indexOf(emitterName) === -1) //if emitterName not exist in config.MySQLEventSkip
                 {
                     process.stdout.write("\n" + k.toString() + " " + emitterName + " " + event.timestamp);
-                    //mysqlGetValue(event.schema, event.table, event.affectedColumns[k],function (callbackResult) { console.log(callbackResult); });
+                    mysqlGetValue(event.schema, event.table, event.affectedColumns[k],function (callbackResult) { console.log(callbackResult); });
                 }
             }
         },
