@@ -72,138 +72,59 @@ var con = mysql.createConnection({
     port: config.DBport,
 });
 
-//Init MySQL columns on first website visit or refresh and emit there last value to the socket. 
-function mysqlInit() {
-
-    function mysqlInitColumns(DBname, DBtable, callback) {
-
-        mysqlGetColumns(DBname, DBtable, function (callbackResult3) {
-
-            for (var i = 0; i < callbackResult3.length; i++) {
-
-                var DBcolumn = callbackResult3[i]["COLUMN_NAME"];
-                process.stdout.write(" " + DBcolumn);
-
-                if(config.MySQLEventSkip.indexOf(DBname + "_" + DBtable + "_" + DBcolumn ) < 0 )
-                {
-                    mysqlGetValue(DBname, DBtable, DBcolumn,function (callbackResult3) { });
-                }
-            }
-            return callback(callbackResult3);
-        });
-    }
-
-    function mysqlInitTables(DBname, callback) {
-
-        mysqlGetTables(DBname, function (callbackResult2) {
-
-            for (var i = 0; i < callbackResult2.length; i++) {
-
-                var DBtable = callbackResult2[i]["TABLE_NAME"];
-                process.stdout.write(" " + DBtable);
-
-                mysqlInitColumns(DBname, DBtable,function(callback){});
-            }
-            return callback(callbackResult2);
-        });
-    }
-
-    function mysqlInitDatabases(callback) {
-    //Get all databases
-        mysqlGetDatabases(function (callbackResult) {
-
-            for (var i = 0; i < callbackResult.length; i++) {
+mysqlGetDatabases(   //<--- This function finished, do somthing with results(return_Value_DB).
+    function(return_Value_DB)
+    {
+        
+        mysqlGetTables(   //<--- This function finished, do somthing with results(return_Value_Table).
+            return_Value_DB,
+            function(return_Value_Table)
+            {
                 
-                var DBname = callbackResult[i];
+                mysqlGetColumns(   //<--- This function finished, do somthing with results(return_Value_Column).
+                    return_Value_DB,
+                    return_Value_Table,
+                    function(return_Value_Column)
+                    {
+                        //Init each columnName/itemName as emiter for client
+                        //io.sockets.emit('init', columnName);//TODO <- Check if this already exist, move the cache variable to server
+                        
+                        mysqlGetValue(   //<--- This function finished, do somthing with results(return_Value_Cell).
+                            return_Value_DB, 
+                            return_Value_Table, 
+                            return_Value_Column, 
+                            function(return_Value_Cell)
+                            {
 
-                mysqlInitTables(DBname,function(callback){});
+                                process.stdout.write("\n" + return_Value_DB + " -> ");
+                                process.stdout.write(return_Value_Table + " -> ");
+                                process.stdout.write(return_Value_Column + " -> ");
+                                process.stdout.write(return_Value_Cell + " ");
+                                //Emit value to socket
+                                //io.sockets.emit(itemName, itemValue);//Maybe only emit new values
+
+                            } 
+                        )
+                    }
+                )
             }
-            return callback(callbackResult);
-        });
+        );
     }
-    mysqlInitDatabases(function(callback){});
-}
-
-////mysqlInitDatabases();
-//mysqlGetDatabases(function (callbackResult) {
-//    
-//    for (var i = 0; i < callbackResult.length; i++) {
-//      
-//        var DBname = callbackResult[i];
-//        //mysqlInitTables(DBname);
-//        mysqlGetTables(DBname, function (callbackResult) {
-//            for (var i = 0; i < callbackResult.length; i++) {
-//                var DBtable = callbackResult[i]["TABLE_NAME"];
-//                process.stdout.write(" " + DBtable);
-//                
-//                //mysqlInitColumns(DBname, DBtable);
-//                mysqlGetColumns(DBname, DBtable, function (callbackResult) {
-//                    for (var i = 0; i < callbackResult.length; i++) {
-//                        
-//                        var DBcolumn = callbackResult[i]["COLUMN_NAME"];
-//                        process.stdout.write(" " + DBcolumn);
-//                        //mysqlGetValue(DBname, DBtable, DBcolumn,function (callbackResult) { });
-//                    }
-//                });
-//            }
-//        });
-//    }
-//});
-
-////Init MySQL columns on first website visit or refresh and emit there last value to the socket. 
-//function mysqlInit() {
-//
-//    //Get all databases
-//    mysqlGetDatabases(function (callbackResult) {
-//
-//        for (var i = 0; i < callbackResult.length; i++) {
-//            var DBname = callbackResult[i];
-//            mysqlInitTables(DBname);
-//        }
-//    });
-//
-//    function mysqlInitTables(DBname, callback) {
-//        mysqlGetTables(DBname, function (callbackResult) {
-//
-//            for (var i = 0; i < callbackResult.length; i++) {
-//
-//                var DBtable = callbackResult[i]["TABLE_NAME"];
-//                process.stdout.write(" " + DBtable);
-//
-//                mysqlInitColumns(DBname, DBtable);
-//            }
-//        });
-//    }
-//
-//    function mysqlInitColumns(DBname, DBtable, callback) {
-//        mysqlGetColumns(DBname, DBtable, function (callbackResult) {
-//
-//            for (var i = 0; i < callbackResult.length; i++) {
-//
-//                var DBcolumn = callbackResult[i]["COLUMN_NAME"];
-//                process.stdout.write(" " + DBcolumn);
-//
-//                mysqlGetValue(DBname, DBtable, DBcolumn,function (callbackResult) { });
-//            }
-//        });
-//    }
-//}
+);
 
 //SQL Query - fetch all databasesnames from server except the ones that are denied within the config file
-function mysqlGetDatabases(callback)
+function mysqlGetDatabases(return_Value_DB)
 {
     //Query = get all databases from host
     var sql = "SHOW DATABASES";
 
     //Query execute
-    con.query(sql, function (err, results) {
+    con.query(sql, function (err, results) {  //Object.keys(results).length
 
         //Throw on error
         if (err) throw err;
 
-        var objectLength = results.length;
-
-        for (var i = 0; i < objectLength; i++) {
+        for (var i = 0; i < results.length; i++) {
 
             if(results[i]["Database"] === undefined)
             {
@@ -211,33 +132,26 @@ function mysqlGetDatabases(callback)
             else{
                 if(config.DBdenied.indexOf(results[i]["Database"]) > -1) //if databaseName exist in config.DBdenied
                 {
-                    process.stdout.write("\nDatabase " + results[i]["Database"] + " found in config.DBdenied \tSkip item...")
+                    //process.stdout.write("\nDatabase " + results[i]["Database"] + " found in config.DBdenied \tSkip item...")
                     delete results[i]["Database"];
                 }
                 else if(config.DBaccepted.indexOf(results[i]["Database"]) == -1) //if databaseName not exist in config.DBaccepted
                 {
 
-                    process.stdout.write("\nDatabase " + results[i]["Database"] + " not found in config.DBaccepted \tSkip item...")
+                    //process.stdout.write("\nDatabase " + results[i]["Database"] + " not found in config.DBaccepted \tSkip item...")
                     delete results[i]["Database"];
-                } 
+                }
+                else {
+                    //process.stdout.write("\nFound: " + results[i]["Database"]);
+                    return_Value_DB(results[i]["Database"]);
+
+                }
             }
         }
-
-        var resultsCache = [];
-        for(var j = 0; j < objectLength; j++) {
-            if( results[j]["Database"] !== undefined ){ 
-                resultsCache.push(results[j]["Database"]);
-            }
-        }
-
-        results = resultsCache;
-        console.log();
-        //return this query results
-        return callback(results);
     })
 }
 
-function mysqlGetTables(DBname, callback) {
+function mysqlGetTables(DBname, return_Value_Table) {
     //Query = get all column names from table
     var sql = "SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_SCHEMA ='" + DBname + "';";
 
@@ -247,16 +161,17 @@ function mysqlGetTables(DBname, callback) {
         //Throw on error
         if (err) throw err;
 
-        //Object with results
-        process.stdout.write("\n--> mysqlGetTables -> " + DBname + " --> " + JSON.stringify(results));
+        for (var i = 0; i < results.length; i++) {  //Object.keys(results).length
 
-        //return this query results
-        return callback(results);
+            //return this query results
+            return_Value_Table(results[i]["TABLE_NAME"]);
+
+        }
     })
 }
 
 //SQL Query - fetch all columns in table
-function mysqlGetColumns(DBname, DBtable, callback) {
+function mysqlGetColumns(DBname, DBtable, return_Value_Column) {
 
     //Query = get all column names from table
     var sql = "SELECT COLUMN_NAME FROM information_schema.columns WHERE TABLE_SCHEMA = '" + DBname + "' AND TABLE_NAME = '" + DBtable + "';";
@@ -267,48 +182,34 @@ function mysqlGetColumns(DBname, DBtable, callback) {
         //Throw on error
         if (err) throw err;
 
-        //Get the amount of columns in table
-        var objectLength = Object.keys(results).length;
+        //if (results[0] === undefined) continue;
 
-        process.stdout.write("\n--> mysqlGetColumns -> " + DBname + " --> " + DBtable + JSON.stringify(results));
-
-        //Init each columnName/itemName as emiter for client
-        for (i = 0; i < objectLength; i++) {
-            var columnName = DBname + "_" + DBtable + "_" + results[i]["COLUMN_NAME"];
-
-            //If noy already exist!!!!!!!!!!
-            io.sockets.emit('init', columnName);//TODO <- Check if this already exist, move the cache variable to server
+        for (i = 0; i < results.length; i++) {  //Object.keys(results).length
+            
+            return_Value_Column(results[i]["COLUMN_NAME"]);
         }
-
-        //return this query results
-        return callback(results);
     })
+
 }
 
 //SQL Query - fetch last value by columnName
-function mysqlGetValue(DBname, DBtable, sColumn, callback) {
+function mysqlGetValue(DBname, DBtable, sColumn, return_Value_Cell) {
 
     //Query = get last value by id from column
-    var sql = "SELECT `" + sColumn + "` FROM `" + DBname + "`.`" + DBtable + "` WHERE `" + sColumn + "` IS NOT NULL ORDER BY `" + sColumn + "` DESC LIMIT 1;";
-
+    //var sql = "SELECT `" + sColumn + "` FROM `" + DBname + "`.`" + DBtable + "` WHERE `" + sColumn + "` IS NOT NULL ORDER BY `" + sColumn + "` DESC LIMIT 1;";
+    var sql = "SELECT `" + sColumn + "` FROM `" + DBname + "`.`" + DBtable + "` WHERE `" + sColumn + "` IS NOT NULL ORDER BY `id` DESC LIMIT 1;";
+    console.log(sql);
     //Query execute
     con.query(sql, function (err, results) {
 
         //Throw on error
         if (err) throw err;
 
-        //Return when we have undefined results (empty cells)
-        if (results[0] === undefined) return;
+        for (i = 0; i < results.length; i++) {  //Object.keys(results).length
 
-        var itemName = DBname + "_" + DBtable + "_" + sColumn;
-        var itemValue = results[0][sColumn];
+            return_Value_Cell(results[i][sColumn]);    
 
-        process.stdout.write("\nmysqlGetValue -> " + itemName + " = " + itemValue);
-
-        //Emit value to socket
-        io.sockets.emit(itemName, itemValue);//Maybe only emit new values
-
-        return callback(itemValue);
+        }
     })
 }
 

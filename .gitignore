@@ -1,3 +1,5 @@
 .backup*
 .config*
 .test*
+cheatsheet.js
+test.js
