@@ -50,14 +50,25 @@ console.log("listening on port " + config.HTTPport)
 \**********************/    //Websockets
 
 var io = require('socket.io').listen(server);
+//var emitterCollection = [];
 
 //Emit values on page refresh or first load
-io.sockets.on('connection', function (socket) {
+io.sockets.on('connection', function (socket)
+{
+    process.stdout.write("\nclient connected");
 
-    console.log("client connected");
+    process.stdout.write("\nmysqlInit");
+    mysqlInit();
+    
     io.sockets.emit('refresh');
-    mysqlInit(); // !!!!!!!!!!!!!!!! CHANGE later, instead of a static value
 });
+
+function emitterUpdate(emitterName, emitterValue)
+{
+    process.stdout.write("\n Socket Emitter Update -> [ " + emitterName + " ] ");
+    io.sockets.emit('init', emitterName);
+    io.sockets.emit(emitterName, emitterValue);
+}
 
 /**************\
 | MYSQL Client |###############################################################
@@ -71,60 +82,54 @@ var con = mysql.createConnection({
     password: config.DBpass,
     port: config.DBport,
 });
+function mysqlInit()
+{
+    mysqlGetDatabases(   //<--- This function finished, do somthing with results(return_Value_DB).
+        function(return_Value_DB)
+        {
 
-mysqlGetDatabases(   //<--- This function finished, do somthing with results(return_Value_DB).
-    function(return_Value_DB)
-    {
-        
-        mysqlGetTables(   //<--- This function finished, do somthing with results(return_Value_Table).
-            return_Value_DB,
-            function(return_Value_Table)
-            {
-                
-                mysqlGetColumns(   //<--- This function finished, do somthing with results(return_Value_Column).
-                    return_Value_DB,
-                    return_Value_Table,
-                    function(return_Value_Column)
-                    {
-                        //Init each columnName/itemName as emiter for client
-                        //io.sockets.emit('init', columnName);//TODO <- Check if this already exist, move the cache variable to server
-                        
-                        mysqlGetValue(   //<--- This function finished, do somthing with results(return_Value_Cell).
-                            return_Value_DB, 
-                            return_Value_Table, 
-                            return_Value_Column, 
-                            function(return_Value_Cell)
-                            {
+            mysqlGetTables(   //<--- This function finished, do somthing with results(return_Value_Table).
+                return_Value_DB,
+                function(return_Value_Table)
+                {
 
-                                process.stdout.write("\n" + return_Value_DB + " -> ");
-                                process.stdout.write(return_Value_Table + " -> ");
-                                process.stdout.write(return_Value_Column + " -> ");
-                                process.stdout.write(return_Value_Cell + " ");
-                                //Emit value to socket
-                                //io.sockets.emit(itemName, itemValue);//Maybe only emit new values
+                    mysqlGetColumns(   //<--- This function finished, do somthing with results(return_Value_Column).
+                        return_Value_DB,
+                        return_Value_Table,
+                        function(return_Value_Column)
+                        {
 
-                            } 
-                        )
-                    }
-                )
-            }
-        );
-    }
-);
+                            //Init each columnName/itemName as emiter for client
+                            var emitterName = return_Value_DB + "_" + return_Value_Table + "_" + return_Value_Column;
+                            if(config.MySQLEventSkip.indexOf(emitterName) === -1)
+                            {       
+                                mysqlGetValue(   //<--- This function finished, do somthing with results(return_Value_Cell).
+                                    return_Value_DB, 
+                                    return_Value_Table, 
+                                    return_Value_Column, 
+                                    function(return_Value_Cell)
+                                    {
+                                        process.stdout.write(" -> ( " + return_Value_Cell + " ) ");
+                                    } 
+                                )
+                            }
+                        }
+                    )
+                }
+            );
+        }
+    );
+}
 
 //SQL Query - fetch all databasesnames from server except the ones that are denied within the config file
 function mysqlGetDatabases(return_Value_DB)
 {
-    //Query = get all databases from host
-    var sql = "SHOW DATABASES";
+    //Query execute = get all databases from host
+    con.query("SHOW DATABASES", function (err, results)  //Object.keys(results).length
+    {
+        if (err) throw err;//Throw on error
 
-    //Query execute
-    con.query(sql, function (err, results) {  //Object.keys(results).length
-
-        //Throw on error
-        if (err) throw err;
-
-        for (var i = 0; i < results.length; i++) {
+        for (var i = 0; i < results.length; i++) {//Object.keys(results).length
 
             if(results[i]["Database"] === undefined)
             {
@@ -132,83 +137,66 @@ function mysqlGetDatabases(return_Value_DB)
             else{
                 if(config.DBdenied.indexOf(results[i]["Database"]) > -1) //if databaseName exist in config.DBdenied
                 {
-                    //process.stdout.write("\nDatabase " + results[i]["Database"] + " found in config.DBdenied \tSkip item...")
                     delete results[i]["Database"];
                 }
                 else if(config.DBaccepted.indexOf(results[i]["Database"]) == -1) //if databaseName not exist in config.DBaccepted
                 {
-
-                    //process.stdout.write("\nDatabase " + results[i]["Database"] + " not found in config.DBaccepted \tSkip item...")
                     delete results[i]["Database"];
                 }
-                else {
-                    //process.stdout.write("\nFound: " + results[i]["Database"]);
-                    return_Value_DB(results[i]["Database"]);
+                else
+                {
+                    return_Value_DB(results[i]["Database"]); //Callback query result item
 
                 }
             }
         }
     })
 }
+//SQL Query - fetch all tables by database
+function mysqlGetTables(DBname, return_Value_Table)
+{    
+    var sql = "SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_SCHEMA ='" + DBname + "';";//Query = get all column names from table
 
-function mysqlGetTables(DBname, return_Value_Table) {
-    //Query = get all column names from table
-    var sql = "SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_SCHEMA ='" + DBname + "';";
+    con.query(sql, function (err, results) {//Query execute
 
-    //Query execute
-    con.query(sql, function (err, results) {
+        if (err) throw err;//Throw on error
 
-        //Throw on error
-        if (err) throw err;
-
-        for (var i = 0; i < results.length; i++) {  //Object.keys(results).length
-
-            //return this query results
-            return_Value_Table(results[i]["TABLE_NAME"]);
-
+        for (var i = 0; i < results.length; i++)//Object.keys(results).length
+        {  
+            return_Value_Table(results[i]["TABLE_NAME"]); //Callback query result item
         }
     })
 }
+//SQL Query - fetch all columns by database and table
+function mysqlGetColumns(DBname, DBtable, return_Value_Column)
+{
+    var sql = "SELECT COLUMN_NAME FROM information_schema.columns WHERE TABLE_SCHEMA = '" + DBname + "' AND TABLE_NAME = '" + DBtable + "';";//Query = get all column names from table
 
-//SQL Query - fetch all columns in table
-function mysqlGetColumns(DBname, DBtable, return_Value_Column) {
+    con.query(sql, function (err, results) {//Query execute
 
-    //Query = get all column names from table
-    var sql = "SELECT COLUMN_NAME FROM information_schema.columns WHERE TABLE_SCHEMA = '" + DBname + "' AND TABLE_NAME = '" + DBtable + "';";
+        if (err) throw err;//Throw on error
 
-    //Query execute
-    con.query(sql, function (err, results) {
-
-        //Throw on error
-        if (err) throw err;
-
-        //if (results[0] === undefined) continue;
-
-        for (i = 0; i < results.length; i++) {  //Object.keys(results).length
-            
-            return_Value_Column(results[i]["COLUMN_NAME"]);
+        for (i = 0; i < results.length; i++)//Object.keys(results).length
+        {   
+            return_Value_Column(results[i]["COLUMN_NAME"]); //Callback query result item
         }
     })
 
 }
+//SQL Query - fetch (last-by-id-column) cellValue by database, table and column
+function mysqlGetValue(DBname, DBtable, sColumn, return_Value_Cell)
+{
+    var sql = "SELECT `" + sColumn + "` FROM `" + DBname + "`.`" + DBtable + "` WHERE `" + sColumn + "` IS NOT NULL ORDER BY `id` DESC LIMIT 1;";//Query = get last value by id from column
+    
+    con.query(sql, function (err, results) {//Query execute
 
-//SQL Query - fetch last value by columnName
-function mysqlGetValue(DBname, DBtable, sColumn, return_Value_Cell) {
+        if (err) throw err;//Throw on error
 
-    //Query = get last value by id from column
-    //var sql = "SELECT `" + sColumn + "` FROM `" + DBname + "`.`" + DBtable + "` WHERE `" + sColumn + "` IS NOT NULL ORDER BY `" + sColumn + "` DESC LIMIT 1;";
-    var sql = "SELECT `" + sColumn + "` FROM `" + DBname + "`.`" + DBtable + "` WHERE `" + sColumn + "` IS NOT NULL ORDER BY `id` DESC LIMIT 1;";
-    console.log(sql);
-    //Query execute
-    con.query(sql, function (err, results) {
-
-        //Throw on error
-        if (err) throw err;
-
-        for (i = 0; i < results.length; i++) {  //Object.keys(results).length
-
-            return_Value_Cell(results[i][sColumn]);    
-
+        for (i = 0; i < results.length; i++)
+        {
+            //Emit value to socket
+            emitterUpdate(DBname + "_" + DBtable + "_" + sColumn, results[i][sColumn]);
+            return_Value_Cell(results[i][sColumn]); //Callback query result item
         }
     })
 }
@@ -219,7 +207,7 @@ function mysqlGetValue(DBname, DBtable, sColumn, return_Value_Cell) {
 
 const MySQLEvents = require('@rodrigogs/mysql-events');
 
-const program = async () => {
+const MySQLEventsInit = async () => {
 
     const instance = new MySQLEvents({
         host: config.DBhost,
@@ -246,34 +234,28 @@ const program = async () => {
             if(config.DBdenied.indexOf(event.schema) > -1)return;
             else if(config.DBaccepted.indexOf(event.schema) === -1)return;
 
-            for (var k = 0; k < Object.keys(event.affectedColumns).length; k++) //for all columns in event.affectedColumns[]
+            for (var iPos = 0; iPos < event.affectedColumns.length; iPos++) //for all columns in event.affectedColumns[]
             {
-                var emitterName = event.schema + "_" + event.table + "_" + event.affectedColumns[k]; //The emitterName
-
-                if (config.MySQLEventSkip.indexOf(emitterName) === -1) //if emitterName not exist in config.MySQLEventSkip
+                var emitterName = event.schema + "_" + event.table + "_" + event.affectedColumns[iPos]; //The emitterName
+                if (config.MySQLEventSkip.indexOf(emitterName) < 0) //if emitterName not exist in config.MySQLEventSkip
                 {
-                    process.stdout.write("\n" + k.toString() + " " + emitterName + " " + event.timestamp);
-                    mysqlGetValue(event.schema, event.table, event.affectedColumns[k],function (callbackResult) { console.log(callbackResult); });
+                    mysqlGetValue(   //<--- This function finished, do somthing with results(return_Value_Cell).
+                        event.schema, 
+                        event.table, 
+                        event.affectedColumns[iPos],
+                        function (return_Value_Cell) { 
+                            delete return_Value_Cell; //Useless :)
+                    });
                 }
             }
         },
     });
-
-    //add a trigger for sql event (database separated)
-    //instance.addTrigger({
-    //    name: 'Whole database instance',
-    //    expression: 'testDB',//<-- database
-    //    statement: MySQLEvents.STATEMENTS.ALL,
-    //    onEvent: (event) => {
-    //        console.log("event.timestamp: " + event.timestamp );
-    //    },
-    //});
-
+    
     //MySQLEvents class emits some events related to its MySQL connection and ZongJi instance
     instance.on(MySQLEvents.EVENTS.CONNECTION_ERROR, console.error);
     instance.on(MySQLEvents.EVENTS.ZONGJI_ERROR, console.error);
 };
 
-program()
+MySQLEventsInit()
     .then(() => console.log('Waiting for database events...'))
     .catch(console.error);

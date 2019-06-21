@@ -11,34 +11,46 @@
 
         //Init socket.io
         var socket = io.connect();
+        var emitterCollection = [];
 
-        //Variable to collect collumnItems
-        var SocketCache = "";
-
-        //Refresh/Clear page after disconnect
+        //Refresh/Clear page with @param 'disconnect'
         socket.on('disconnect', function () {
             document.location.reload();            
         });
 
-        //on init socket items
-        socket.on('init', function (itemName) { 
+        //Create emitters with @param 'init'
+        socket.on('init', function (itemName) {
 
-            //Create item with itemName
-            socket.on(itemName, function (itemValue) { 
+            for(var iPos = 0; iPos < emitterCollection.length; iPos++)
+            {
+                if (emitterCollection[iPos] == emitterName)
+                {
+                    return; //Emitter found
+                }
+            }
 
-                //jQuery - itemName to SocketCache string
-                $("#SocketCache").text(SocketCache += itemName + "\n");
+            //alert(emitterCollection[0]);            
+            //jQuery - itemName to SocketCache string
+            //var SocketCache = "Available id's: \n";
+            //SocketCache += "temp";
+            //var SocketCache = itemName;
+            //for(var iPos = 0; iPos < emitterCollection.length; iPos++){ SocketCache += emitterCollection[iPos] };
 
+            $("#emitterCollection").text(itemName);
+
+            //Create emitters(listener) with @param 'itemName', value will be fetched after
+            socket.on(itemName, function (itemValue) {
                 //jQuery - Add the itemValue to item
-                $("#" + itemName).text(itemValue); 
-
+                $("#" + itemName).text(itemValue);
             });
+
         });
 
     </script>
 
 </head>
 <body>
+    <p>REST-API_ESMR5_currentwatt:<a id='REST-API_ESMR5_currentwatt'></a></p>
     <p>testDB_testTable_id:       <a id='testDB_testTable_id'></a></p>
     <p>testDB_testTable_iCounter: <a id='testDB_testTable_iCounter'></a></p>
     <p>testDB_testTable_testCol1: <a id='testDB_testTable_testCol1'></a></p>
@@ -51,8 +63,6 @@
 </body>
 <footer>
         <hr>
-        <small>Debug:</small>
-        <br/><br/>
-        Available socket items: <pre id='SocketCache'></pre>
+        <pre id='emitterCollection'></pre>
 </footer>
 </html>
