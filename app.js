@@ -59,7 +59,7 @@ io.sockets.on('connection', function (socket)
 
     process.stdout.write("\nmysqlInit");
     mysqlInit();
-    
+
     io.sockets.emit('refresh');
 });
 
@@ -239,13 +239,12 @@ const MySQLEventsInit = async () => {
                 var emitterName = event.schema + "_" + event.table + "_" + event.affectedColumns[iPos]; //The emitterName
                 if (config.MySQLEventSkip.indexOf(emitterName) < 0) //if emitterName not exist in config.MySQLEventSkip
                 {
+                    //Only call this function, skip double/useless actions.
                     mysqlGetValue(   //<--- This function finished, do somthing with results(return_Value_Cell).
                         event.schema, 
                         event.table, 
                         event.affectedColumns[iPos],
-                        function (return_Value_Cell) { 
-                            delete return_Value_Cell; //Useless :)
-                    });
+                        function () {});//no process of callback, the value is already set inside this function.
                 }
             }
         },

@@ -51,8 +51,12 @@ _in progress....._
 
 
 ### Goal :
-- Get all Databases.
-- Get all Tables from found Databases.
-- Get all Columns from found Tables.
-- Get the last Value from each Column found.
-- Emit this record value to websockets with ColumnName as triggerName.
+- Create HTTP socket event listeners ( for all columns in database ) :
+    - > Get all Databases
+    - > Get all Tables from found Databases.
+    - > Get all Columns from found Tables.
+    - > Create emitters with patern : `databaseName_tableName_columnName`
+    - > Init value, by getting last value from current column, where column  `id` is not null (desc sorted).
+
+- Trigger HTTP socket event listener
+    - > On accepted MySQLevent

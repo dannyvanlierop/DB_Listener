@@ -3,15 +3,24 @@
 <head>
     <title>Socket.io Test</title>
 
+    <!--    <script>var frontEndVar = <%= EJSvar %>;</script>   -->
+    <!--    <script src="https://cdnjs.cloudflare.com/ajax/libs/json2html/1.2.0/json2html.min.js"></script> -->
+
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
-    <!--    <script src="https://cdnjs.cloudflare.com/ajax/libs/json2html/1.2.0/json2html.min.js"></script> -->
 
     <script>
 
         //Init socket.io
         var socket = io.connect();
-        var emitterCollection = [];
+        var emittersCollected = "REST-API_ESMR5_currentwatt";
+        //var emitterCollection = new Array("test1")
+
+        //var emitterCollection = ["test"];
+        //emitterCollection[1] = "test1";
+        //emitterCollection.push("test2");
+               
+        //emitterCollection.push("test");
 
         //Refresh/Clear page with @param 'disconnect'
         socket.on('disconnect', function () {
@@ -21,28 +30,39 @@
         //Create emitters with @param 'init'
         socket.on('init', function (itemName) {
 
-            for(var iPos = 0; iPos < emitterCollection.length; iPos++)
-            {
-                if (emitterCollection[iPos] == emitterName)
-                {
-                    return; //Emitter found
-                }
-            }
+            //var sometest = indexOf.includes(itemName);
+            //alert(sometest);
 
-            //alert(emitterCollection[0]);            
-            //jQuery - itemName to SocketCache string
-            //var SocketCache = "Available id's: \n";
-            //SocketCache += "temp";
-            //var SocketCache = itemName;
-            //for(var iPos = 0; iPos < emitterCollection.length; iPos++){ SocketCache += emitterCollection[iPos] };
+            //if(emittersCollected.indexOf(emitterName) < 0 )
+            //{
+                //for(var iPos = 0; iPos < emitterCollection.length; iPos++)
+                //{
+                //    if (emitterCollection[iPos] == emitterName)
+                //    {
+                //        return; //Emitter found
+                //    }
+                //}
+                //emitterName.push(emitterName);
+                //alert(emitterCollection);
+                //emitterCollection.push(emitterName);
 
-            $("#emitterCollection").text(itemName);
+                //alert(emitterCollection);            
+                //jQuery - itemName to SocketCache string
+                //var SocketCache = "Available id's: \n";
+                //SocketCache += "temp";
+                //var SocketCache = itemName;
+                //for(var iPos = 0; iPos < emitterCollection.length; iPos++){ SocketCache += emitterCollection[iPos] };
+                //emitterCollection[emitterCollectionPos] = emitterName;
 
-            //Create emitters(listener) with @param 'itemName', value will be fetched after
-            socket.on(itemName, function (itemValue) {
-                //jQuery - Add the itemValue to item
-                $("#" + itemName).text(itemValue);
-            });
+                $("#emitterLastChanged").text(itemName);
+                $("#emitterCollection").text(emittersCollected);
+
+                //Create emitters(listener) with @param 'itemName', value will be fetched after
+                socket.on(itemName, function (itemValue) {
+                    //jQuery - Add the itemValue to item
+                    $("#" + itemName).text(itemValue);
+                });                
+            //}
 
         });
 
@@ -63,6 +83,7 @@
 </body>
 <footer>
         <hr>
-        <pre id='emitterCollection'></pre>
+            Changed last:        <pre id='emitterLastChanged'></pre>
+              Collection:        <pre id='emitterCollection'></pre>
 </footer>
 </html>
