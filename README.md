@@ -1,17 +1,32 @@
-# DB_Listener
+# ***DB_Listener***
 
 
-## Todo :
+# Todo :
 
 - _in progress....._ 
   - Auto generate <`html`></`html`> content  with tags
   - Cleanup files and Finish this Readme
 
-## Environment :
+# Environment :
 - node v8.16.0
 - npm 6.4.1
 
-## Setup :
+# Intention : 
+*( realtime database values on a websites served by a nodeJS webserver )*
+- Create HTTP socket event listeners ( for all columns in database ) by query the MySQL server :
+    - > Get all `Databases`
+    - > Get all `Tables` from found `Databases`.
+    - > Get all `Columns` from found `Tables`.
+    - > Create `emitter` from found information with patern [ `databaseName_tableName_columnName` ]
+    - > Init `emitter` value by getting last value from current column(`columnName`), where column(`id`) is `not null` (`desc sorted`).
+
+- Create a socket event listener
+    - > On MySQLevent when it satisfies by settings in [**`.config.json`**]
+
+- Collect HTTP socket items and there values to `SocketMessageQueue`
+    - > Send the collected items in one request after some `timelimit` or `on add existing key`
+
+# Setup :
 
 - Configuration file
   - Rename **`config.json`** to **`.config.json`**
@@ -71,29 +86,14 @@
         }
 
     ```
-## Run :
+# ***Warning*** :
+- > This script will run on **`all MySQL events`**
+- > configure **`.config.json`** to include and exclude items
+
+# Run :
 
 - node `./app.js`
 
-## Result :
+# Result :
 
 - browse to http://127.0.0.1:3000 or http://localhost:3000
-
-## Intention : 
-*( realtime database values on a websites served by a nodeJS webserver )*
-- Create HTTP socket event listeners ( for all columns in database ) by query the MySQL server :
-    - > Get all `Databases`
-    - > Get all `Tables` from found `Databases`.
-    - > Get all `Columns` from found `Tables`.
-    - > Create `emitter` from found information with patern [ `databaseName_tableName_columnName` ]
-    - > Init `emitter` value by getting last value from current column(`columnName`), where column(`id`) is `not null` (`desc sorted`).
-
-- Create a socket event listener
-    - > On MySQLevent when it satisfies by settings in [**`.config.json`**]
-
-- Collect HTTP socket items and there values to `SocketMessageQueue`
-    - > Send the collected items in one request after some `timelimit` or `on add existing key`
-
-## ***Warning*** :
-- > This script will run on **`all MySQL events`**
-- > configure **`.config.json`** to exclude mass queries
