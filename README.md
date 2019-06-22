@@ -58,5 +58,8 @@ _in progress....._
     - > Create `emitter` from found information with patern [ `databaseName_tableName_columnName` ]
     - > Init `emitter` value by getting last value from current column(`columnName`), where column(`id`) is `not null` (`desc sorted`).
 
-- Trigger HTTP socket event listener
+- Create a socket event listener
     - > On MySQLevent when it satisfies by settings in [**`.config.json`**]
+
+- Collect HTTP socket items and there values to `SocketMessageQueue`
+    - > Send the collected items in one request after some timelimit or when we try to update some value
