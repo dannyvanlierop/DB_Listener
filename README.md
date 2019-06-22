@@ -14,10 +14,10 @@
 ### Setup :
 
 - Configuration file
-  - Rename **`.config.json.example`** to .config.json
- 
+  - Rename **`config.json`** to **`.config.json`**
+
   or
- 
+
   - Create a configuration file ( **`.config.json`** ) with the following content:
 
     *Edit this file after your needs.*

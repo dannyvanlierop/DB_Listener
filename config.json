@@ -1,0 +1,46 @@
+{
+    "System": {
+        "ServerOnlineSeconds": true,
+        "ServerOnlineSecondsMilli": true
+    },
+    "WebServer": {
+        "HTTPport": 3000
+    },
+    "Sockets": {
+        "Queue": {
+            "TimeLimit": 15000
+        }
+    },
+    "MySQL": {
+        "Server": {
+            "DBhost": "10.0.0.1",
+            "DBport": 3306,
+            "DBname": "testDB",
+            "DBuser": "testDB",
+            "DBpass": "TestPassword",
+            "DBaccepted": [
+                "testDB",
+                "testDB2"
+            ],
+            "DBdenied": [
+                "mysql",
+                "information_schema",
+                "performance_schema"
+            ],
+            "MySQLEventSkip": [
+                "testDB1_testTable1_testColumn1",
+                "testDB1_testTable1_testColumn2",
+                "testDB1_testTable2_testColumn5",
+                "testDB1_testTable2_testColumn6",
+                "testDB1_testTable3_testColumn9",
+                "testDB2_testTable3_testColumn4",
+                "testDB2_testTable3_testColumn5",
+                "testDB2_testTable3_testColumn6",
+                "testDB2_testTable3_testColumn7",
+                "testDB3_testTable1_testColumn1",
+                "testDB3_testTable1_testColumn2",
+                "testDB3_testTable1_testColumn3"
+            ]
+        }
+    }
+}
