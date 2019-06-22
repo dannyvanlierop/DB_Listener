@@ -2,10 +2,8 @@
 
 
 ### Todo :
-- _in progress....._
-  
-  - Add and remove comments
-  - Add more config to `.config.json`
+
+- _in progress....._ 
   - Auto generate <`html`></`html`> content  with tags
   - Cleanup files and Finish this Readme
 
