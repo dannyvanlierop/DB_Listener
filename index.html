@@ -8,82 +8,98 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/json2html/1.2.0/json2html.min.js"></script>
 
     <script>
 
         //Init socket.io
         var socket = io.connect();
-        var emittersCollected = "REST-API_ESMR5_currentwatt";
-        //var emitterCollection = new Array("test1")
+        
+        function clientRefresh()
+        {
+            document.location.reload();
+        }
 
-        //var emitterCollection = ["test"];
-        //emitterCollection[1] = "test1";
-        //emitterCollection.push("test2");
-               
-        //emitterCollection.push("test");
-
-        //Refresh/Clear page with @param 'disconnect'
         socket.on('disconnect', function () {
-            document.location.reload();            
+            clientRefresh();
         });
 
-        //Create emitters with @param 'init'
-        socket.on('init', function (itemName) {
-
-            //var sometest = indexOf.includes(itemName);
-            //alert(sometest);
-
-            //if(emittersCollected.indexOf(emitterName) < 0 )
-            //{
-                //for(var iPos = 0; iPos < emitterCollection.length; iPos++)
-                //{
-                //    if (emitterCollection[iPos] == emitterName)
-                //    {
-                //        return; //Emitter found
-                //    }
-                //}
-                //emitterName.push(emitterName);
-                //alert(emitterCollection);
-                //emitterCollection.push(emitterName);
-
-                //alert(emitterCollection);            
-                //jQuery - itemName to SocketCache string
-                //var SocketCache = "Available id's: \n";
-                //SocketCache += "temp";
-                //var SocketCache = itemName;
-                //for(var iPos = 0; iPos < emitterCollection.length; iPos++){ SocketCache += emitterCollection[iPos] };
-                //emitterCollection[emitterCollectionPos] = emitterName;
-
-                $("#emitterLastChanged").text(itemName);
-                $("#emitterCollection").text(emittersCollected);
-
-                //Create emitters(listener) with @param 'itemName', value will be fetched after
-                socket.on(itemName, function (itemValue) {
-                    //jQuery - Add the itemValue to item
-                    $("#" + itemName).text(itemValue);
-                });                
-            //}
-
+        socket.on('connect', function () {
+            
         });
+
+        socket.on('JSONforClient', function (data) {
+            $("#JSONforClient").text(JSON.stringify(data,null,2));
+        });
+
+        socket.on('ServerOnlineSeconds', function (data) {
+            $("#ServerOnlineSeconds").text(data);
+        });
+
+        socket.on('ServerOnlineSecondsMilli', function (data) {
+            $("#ServerOnlineSecondsMilli").text(data);
+        });
+
+        socket.on('SocketMessageQueueTime', function (data) {
+            $("#SocketMessageQueueTime").text(data);
+        });
+
+        socket.on('DebugMessage', function (data) {
+            $("#DebugMessage").text(data);
+        });
+
+        
+        
+
+
+        socket.on("emitterLastChanged", function (itemValue) {
+            //jQuery - Add the itemValue to item
+            $("#emitterLastChanged").text(itemValue);
+            //document.getElementById(itemName).innerHTML = itemValue;
+        });    
+
+        socket.on("REST-API_ESMR5_currentwatt", function (itemValue) {
+            //jQuery - Add the itemValue to item
+            $("#REST-API_ESMR5_currentwatt").text(itemValue);
+            //document.getElementById(itemName).innerHTML = itemValue;
+        });    
+
+//        socket.on('init', function (itemName) {
+//
+//                $("#emitterLastChanged").text(itemName);
+//                //Create emitters(listener) with @param 'itemName', value will be fetched after
+//                socket.on(itemName, function (itemValue) {
+//                    //jQuery - Add the itemValue to item
+//                    $("#" + itemName).text(itemValue);
+//                    //document.getElementById(itemName).innerHTML = itemValue;
+//                });                
+//            //}
+//
+//        });
+//
+
+
 
     </script>
 
 </head>
 <body>
-    <p>REST-API_ESMR5_currentwatt:<a id='REST-API_ESMR5_currentwatt'></a></p>
-    <p>testDB_testTable_id:       <a id='testDB_testTable_id'></a></p>
-    <p>testDB_testTable_iCounter: <a id='testDB_testTable_iCounter'></a></p>
-    <p>testDB_testTable_testCol1: <a id='testDB_testTable_testCol1'></a></p>
-    <p>testDB_testTable_testCol2: <a id='testDB_testTable_testCol2'></a></p>
-    <p>testDB_testTable_testCol3: <a id='testDB_testTable_testCol3'></a></p>
-    <p>testDB_testTable_testCol4: <a id='testDB_testTable_testCol4'></a></p>
-    <p>testDB2_testTable_col11:   <a id='testDB2_testTable_col11'></a></p>
-    <!-- Collected collumn items-->
+
+    </br><hr/>Timers :</font><hr/>
+    
+    <h4>ServerOnline</h4>
+    <pre>Seconds                : <a id='ServerOnlineSeconds'></a></pre>
+    <pre>MilliSeconds           : <a id='ServerOnlineSecondsMilli'></a></pre>
+    
+    <h4>SocketMessageQueue</h4>
+    <pre>SocketMessageQueueTime : <a id='SocketMessageQueueTime'></a></pre>
+
+    </br><hr/>Dynamic data (JSON)</font><hr/>
+    <pre><a id='JSONforClient'></a></pre>
+    </br><hr/>Dynamic data (items)</font><hr/>
+    <pre>DebugMessage      : <a id='DebugMessage'></a></pre>
+    <pre><a id='REST-emitterLastChanged'></a></pre>
+    <pre><a id='REST-API_ESMR5_currentwatt'></a></pre>
 
 </body>
-<footer>
-        <hr>
-            Changed last:        <pre id='emitterLastChanged'></pre>
-              Collection:        <pre id='emitterCollection'></pre>
-</footer>
 </html>

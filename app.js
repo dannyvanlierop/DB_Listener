@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+console.log("\n\n");
+
 //The config file
 var config = require('./.config.json');
 
@@ -46,28 +48,134 @@ server = http.createServer(function (request, response) {
 console.log("listening on port " + config.HTTPport)
 
 /**********************\
-| Sockets and emitters |#######################################################
+| Sockets and Emitters |#######################################################
 \**********************/    //Websockets
 
 var io = require('socket.io').listen(server);
-//var emitterCollection = [];
+io.sockets.emit('disconnect');// Renew old connections that still exist
 
+var SMQ = {
+    /* SocketMessageQueue / EmitterQueue */
+    "ServerOnlineSeconds": 0,
+    "ServerOnlineSecondsMilli": 0, 
+ 
+    "Message": {
+        "Content": {},
+        "Id" : 0,
+        "Queue" :{},
+        "Add": function (sKey, sValue) {
+            if (SMQ.Message.Content[sKey] !== undefined) SMQ.Queue.Send(); //Send the message when the sKey already exists, we don't updates values in an existing message.
+            SMQ.Message.Content[sKey] = sValue; //Add the value
+        },
+        "Reset": function () {
+            SMQ.Message.Content = {};
+        },
+        "Init": function () {
+            
+            //Reset all values to there defaults
+            SMQ.Message.Reset();
+
+            //Set here the default options for a new message
+            SMQ.Message.Id++;
+        }   
+    },
+    "Queue":
+    {
+        "Time" : 0,
+        "TimeLimit" : 10000,
+        "Send": function () {
+
+            //Add the current QueueTime of this message to the message
+            SMQ.Message.Queue.Time = SMQ.Queue.Time;
+
+            //Send the message
+            io.sockets.emit("JSONforClient", SMQ.Message);
+    
+            //Reset the QueueTimer
+            SMQ.Timer.Reset()
+        }
+    },
+    "Timer":
+    {
+        "QueueTime": 10000,  // The maximum time that a message can be in the queue 
+        "Process": "",  //Used to bind the Timer
+        "Enabled": false,   //Used to cache the status
+        "Check": function () {  //Used to check the status
+            SMQ.Timer.Enabled = typeof SMQ.Timer.Process === 'function';
+            process.stdout.write(" Timer Check - Found: " + SMQ.Timer.Enabled);
+            return SMQ.Timer.Enabled;
+        },
+        "Clear": function () {  //Used to clear the existing Timer
+            clearInterval(SMQ.Timer.Process);
+            SMQ.Queue.Time = 0;
+            process.stdout.write("\nTimer Clear " + (SMQ.Timer.Check() ? " Failed! " : " Ok! "));
+        },
+        "Create": function () { //Used to create a new Timer
+            if (!SMQ.Timer.Check()) {
+                //Empty/Init the New message
+                SMQ.Message.Init();    
+                SMQ.Timer.Process = setInterval(
+
+                    //setInterval meets the QueueTime condition.
+                    function () {
+
+                        //Options for messages that are send because of queueTime condtion.
+                        SMQ.Message.Queue.TimeLimit = SMQ.Queue.TimeLimit;
+                        SMQ.Message.Queue.TimeLimitReached = true;       
+
+                        //This message does reach the QueueTime limit.
+                        SMQ.Queue.Send();
+                    },
+                    SMQ.Timer.QueueTime
+                );
+                console.log(" Timer Create " + SMQ.ServerOnlineSeconds);
+            }
+        },
+        "Reset": function () {  //Used to reset the Timer
+            SMQ.Timer.Clear(); //Clear old Timer
+            SMQ.Timer.Create();   //Start new Timer
+        },
+    }
+};
+
+//Start SocketMessageQueue
+
+
+//Object.keys(results)
+
+//if(itemExist) myJSONobjectSend();
 //Emit values on page refresh or first load
 io.sockets.on('connection', function (socket)
 {
     process.stdout.write("\nclient connected");
 
+    //Init MySQL events
     process.stdout.write("\nmysqlInit");
     mysqlInit();
 
-    io.sockets.emit('refresh');
+    SMQ.Queue.Send();
 });
+
+//Timers
+
+//ServerOnlineSeconds
+setInterval(function(){ io.sockets.emit("ServerOnlineSeconds", SMQ.ServerOnlineSeconds++ ); }, 1000);
+//ServerOnlineSecondsMilli
+setInterval(function(){ io.sockets.emit("ServerOnlineSecondsMilli", SMQ.ServerOnlineSecondsMilli++ ); }, 1);
+//SocketMessageQueueTime
+setInterval(function(){ io.sockets.emit("SocketMessageQueueTime", SMQ.Queue.Time++ ); }, 1);
+
+//Item for -> Meta and duplicate key for test
+//setInterval(function(){ SMQ.Queue.Add("TestKey","TestVal"); }, 2000);
 
 function emitterUpdate(emitterName, emitterValue)
 {
     process.stdout.write("\n Socket Emitter Update -> [ " + emitterName + " ] ");
     io.sockets.emit('init', emitterName);
     io.sockets.emit(emitterName, emitterValue);
+
+    //Debug
+    SMQ.Message.Add(emitterName,emitterValue)
 }
 
 /**************\
@@ -244,7 +352,7 @@ const MySQLEventsInit = async () => {
                         event.schema, 
                         event.table, 
                         event.affectedColumns[iPos],
-                        function () {});//no process of callback, the value is already set inside this function.
+                        function () { process.stdout.write(" -> < " + event.timestamp + " > "); });//no process of callback, the value is already set inside this function.
                 }
             }
         },
