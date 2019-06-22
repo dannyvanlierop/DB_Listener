@@ -44,15 +44,19 @@ server = http.createServer(function (request, response) {
         response.end();     // end the response so browsers don't hang
         //console.log(e.stack)
     }
-}).listen(config.HTTPport)
-console.log("listening on port " + config.HTTPport)
+}).listen(config.WebServer.HTTPport)
+console.log("listening on port " + config.WebServer.HTTPport)
 
 /**********************\
 | Sockets and Emitters |#######################################################
 \**********************/    //Websockets
+//Object.keys(results)
+var io = require('socket.io').listen(server); //Create websocket server
+io.sockets.emit('disconnect'); // Renew old connections that still exist
 
-var io = require('socket.io').listen(server);
-io.sockets.emit('disconnect');// Renew old connections that still exist
+/**********************\
+| SocketMessageQueue |#######################################################
+\**********************/// WebsocketsQueue / EmitterQueue
 
 var SMQ = {
     /* SocketMessageQueue / EmitterQueue */
@@ -82,7 +86,7 @@ var SMQ = {
     "Queue":
     {
         "Time" : 0,
-        "TimeLimit" : 10000,
+        "TimeLimit" : 15000, // The maximum time that a message can be in the queue  //config.WebServer.HTTPport
         "Send": function () {
 
             //Add the current QueueTime of this message to the message
@@ -97,7 +101,6 @@ var SMQ = {
     },
     "Timer":
     {
-        "QueueTime": 10000,  // The maximum time that a message can be in the queue 
         "Process": "",  //Used to bind the Timer
         "Enabled": false,   //Used to cache the status
         "Check": function () {  //Used to check the status
@@ -126,7 +129,7 @@ var SMQ = {
                         //This message does reach the QueueTime limit.
                         SMQ.Queue.Send();
                     },
-                    SMQ.Timer.QueueTime
+                    SMQ.Queue.TimeLimit
                 );
                 console.log(" Timer Create " + SMQ.ServerOnlineSeconds);
             }
@@ -138,33 +141,25 @@ var SMQ = {
     }
 };
 
-//Start SocketMessageQueue
-
-
-//Object.keys(results)
-
-//if(itemExist) myJSONobjectSend();
 //Emit values on page refresh or first load
 io.sockets.on('connection', function (socket)
 {
     process.stdout.write("\nclient connected");
-
-    //Init MySQL events
-    process.stdout.write("\nmysqlInit");
-    mysqlInit();
+    
+    socket.emit('request', /* */); // emit an event to the socket
+    io.emit('broadcast', /* */); // emit an event to all connected sockets
+    socket.on('reply', function(){ /* */ }); // listen to the event
 
     SMQ.Queue.Send();
 });
 
 //Timers
-
 //ServerOnlineSeconds
 setInterval(function(){ io.sockets.emit("ServerOnlineSeconds", SMQ.ServerOnlineSeconds++ ); }, 1000);
 //ServerOnlineSecondsMilli
 setInterval(function(){ io.sockets.emit("ServerOnlineSecondsMilli", SMQ.ServerOnlineSecondsMilli++ ); }, 1);
 //SocketMessageQueueTime
 setInterval(function(){ io.sockets.emit("SocketMessageQueueTime", SMQ.Queue.Time++ ); }, 1);
-
 //Item for -> Meta and duplicate key for test
 //setInterval(function(){ SMQ.Queue.Add("TestKey","TestVal"); }, 2000);
 
@@ -181,57 +176,17 @@ function emitterUpdate(emitterName, emitterValue)
 /**************\
 | MYSQL Client |###############################################################
 \**************/    //SQL Query's
-
 var mysql = require('mysql');
 var con = mysql.createConnection({
     multipleStatements: true,
-    host: config.DBhost,
-    user: config.DBuser,
-    password: config.DBpass,
-    port: config.DBport,
+    host: config.MySQL.Server.DBhost,
+    user: config.MySQL.Server.DBuser,
+    password: config.MySQL.Server.DBpass,
+    port: config.MySQL.Server.DBport,
 });
-function mysqlInit()
-{
-    mysqlGetDatabases(   //<--- This function finished, do somthing with results(return_Value_DB).
-        function(return_Value_DB)
-        {
-
-            mysqlGetTables(   //<--- This function finished, do somthing with results(return_Value_Table).
-                return_Value_DB,
-                function(return_Value_Table)
-                {
-
-                    mysqlGetColumns(   //<--- This function finished, do somthing with results(return_Value_Column).
-                        return_Value_DB,
-                        return_Value_Table,
-                        function(return_Value_Column)
-                        {
-
-                            //Init each columnName/itemName as emiter for client
-                            var emitterName = return_Value_DB + "_" + return_Value_Table + "_" + return_Value_Column;
-                            if(config.MySQLEventSkip.indexOf(emitterName) === -1)
-                            {       
-                                mysqlGetValue(   //<--- This function finished, do somthing with results(return_Value_Cell).
-                                    return_Value_DB, 
-                                    return_Value_Table, 
-                                    return_Value_Column, 
-                                    function(return_Value_Cell)
-                                    {
-                                        process.stdout.write(" -> ( " + return_Value_Cell + " ) ");
-                                    } 
-                                )
-                            }
-                        }
-                    )
-                }
-            );
-        }
-    );
-}
 
 //SQL Query - fetch all databasesnames from server except the ones that are denied within the config file
-function mysqlGetDatabases(return_Value_DB)
-{
+function mysqlGetDatabases(return_Value_DB) {
     //Query execute = get all databases from host
     con.query("SHOW DATABASES", function (err, results)  //Object.keys(results).length
     {
@@ -239,23 +194,15 @@ function mysqlGetDatabases(return_Value_DB)
 
         for (var i = 0; i < results.length; i++) {//Object.keys(results).length
 
-            if(results[i]["Database"] === undefined)
-            {
-            }
-            else{
-                if(config.DBdenied.indexOf(results[i]["Database"]) > -1) //if databaseName exist in config.DBdenied
-                {
-                    delete results[i]["Database"];
-                }
-                else if(config.DBaccepted.indexOf(results[i]["Database"]) == -1) //if databaseName not exist in config.DBaccepted
-                {
-                    delete results[i]["Database"];
-                }
-                else
-                {
-                    return_Value_DB(results[i]["Database"]); //Callback query result item
+            if (results[i]["Database"] === undefined) continue;
 
-                }
+            //if databaseName exist in config.MySQL.Server.DBdenied or if databaseName not exist in config.MySQL.Server.DBaccepted
+            if (config.MySQL.Server.DBdenied.indexOf(results[i]["Database"]) > -1 || config.MySQL.Server.DBaccepted.indexOf(results[i]["Database"]) == -1) 
+            {
+                delete results[i]["Database"];
+            }
+            else {
+                return_Value_DB(results[i]["Database"]); //Callback query result item
             }
         }
     })
@@ -309,6 +256,41 @@ function mysqlGetValue(DBname, DBtable, sColumn, return_Value_Cell)
     })
 }
 
+mysqlGetDatabases(   //<--- This function finished, do somthing with results(return_Value_DB).
+
+    function (return_Value_DB) {
+        mysqlGetTables(   //<--- This function finished, do somthing with results(return_Value_Table).
+
+            return_Value_DB,
+            function (return_Value_Table) {
+                mysqlGetColumns(   //<--- This function finished, do somthing with results(return_Value_Column).
+
+                    return_Value_DB,
+                    return_Value_Table,
+                    function (return_Value_Column) {
+
+                        //Init each columnName/itemName as emiter for client
+                        var emitterName = return_Value_DB + "_" + return_Value_Table + "_" + return_Value_Column;
+
+                        //Init this value when it meets the config requirements
+                        if (config.MySQL.Server.MySQLEventSkip.indexOf(emitterName) === -1) {
+
+                            mysqlGetValue(   //<--- This function finished, do somthing with results(return_Value_Cell).
+                                return_Value_DB,
+                                return_Value_Table,
+                                return_Value_Column,
+                                function (return_Value_Cell) {
+                                    process.stdout.write(" -> ( " + return_Value_Cell + " ) ");
+                                }
+                            )
+                        }
+                    }
+                )
+            }
+        );
+    }
+);
+
 /**************\
 | MySQL events |###############################################################
 \**************/    //Will be triggered on MySQL events
@@ -318,10 +300,10 @@ const MySQLEvents = require('@rodrigogs/mysql-events');
 const MySQLEventsInit = async () => {
 
     const instance = new MySQLEvents({
-        host: config.DBhost,
-        user: config.DBuser,
-        password: config.DBpass,
-        port: config.DBport,
+        host: config.MySQL.Server.DBhost,
+        user: config.MySQL.Server.DBuser,
+        password: config.MySQL.Server.DBpass,
+        port: config.MySQL.Server.DBport
     }, {
             serverId: 1,
             startAtEnd: true,
@@ -339,13 +321,13 @@ const MySQLEventsInit = async () => {
         statement: MySQLEvents.STATEMENTS.ALL,
         onEvent: (event) => {
 
-            if(config.DBdenied.indexOf(event.schema) > -1)return;
-            else if(config.DBaccepted.indexOf(event.schema) === -1)return;
+            if(config.MySQL.Server.DBdenied.indexOf(event.schema) > -1)return;
+            else if(config.MySQL.Server.DBaccepted.indexOf(event.schema) === -1)return;
 
             for (var iPos = 0; iPos < event.affectedColumns.length; iPos++) //for all columns in event.affectedColumns[]
             {
                 var emitterName = event.schema + "_" + event.table + "_" + event.affectedColumns[iPos]; //The emitterName
-                if (config.MySQLEventSkip.indexOf(emitterName) < 0) //if emitterName not exist in config.MySQLEventSkip
+                if (config.MySQL.Server.MySQLEventSkip.indexOf(emitterName) < 0) //if emitterName not exist in config.MySQL.Server.MySQLEventSkip
                 {
                     //Only call this function, skip double/useless actions.
                     mysqlGetValue(   //<--- This function finished, do somthing with results(return_Value_Cell).
@@ -364,5 +346,5 @@ const MySQLEventsInit = async () => {
 };
 
 MySQLEventsInit()
-    .then(() => console.log('Waiting for database events...'))
-    .catch(console.error);
+.then(() => console.log('Waiting for database events...'))
+.catch(console.error);

@@ -1,6 +1,13 @@
 # DB_Listener
 
-_in progress....._
+
+### Todo :
+- _in progress....._
+  
+  - Add and remove comments
+  - Add more config to `.config.json`
+  - Auto generate <`html`></`html`> content  with tags
+  - Cleanup files and Finish this Readme
 
 ### Environment :
 - node v8.16.0
@@ -12,37 +19,52 @@ _in progress....._
 
 ```JSON
 {
-   "DBhost" : "10.0.0.1",
-   "DBport" : 3306,
-   "DBname" : "testDB",
-   "DBtable": "testTable",
-   "DBuser" : "testDB",
-   "DBpass" : "TestPass",
-   "HTTPport" : 3000,
-   "DBaccepted": [
-    "testDB",
-    "testDB2",
-    ],
-    "DBdenied": [
-        "mysql",
-        "information_schema",
-        "performance_schema"
-    ],
-    "MySQLEventSkip": [
-        "testDB1_testTable1_testColumn1"
-        "testDB1_testTable1_testColumn2"
-        "testDB1_testTable2_testColumn5"
-        "testDB1_testTable2_testColumn6"
-        "testDB1_testTable3_testColumn9"
-        "testDB2_testTable3_testColumn4"
-        "testDB2_testTable3_testColumn5"
-        "testDB2_testTable3_testColumn6"
-        "testDB2_testTable3_testColumn7"
-        "testDB3_testTable1_testColumn1"
-        "testDB3_testTable1_testColumn2"
-        "testDB3_testTable1_testColumn3"
-    ]
+    "System": {
+        "ServerOnlineSeconds": true,
+        "ServerOnlineSecondsMilli": true
+    },
+    "WebServer": {
+        "HTTPport": 3000
+    },
+    "Sockets": {
+        "Queue": {
+            "TimeLimit": 15000
+        }
+    },
+    "MySQL": {
+        "Server": {
+            "DBhost": "10.0.0.1",
+            "DBport": 3306,
+            "DBname": "testDB",
+            "DBuser": "testDB",
+            "DBpass": "TestPassword",
+            "DBaccepted": [
+                "testDB",
+                "testDB2",
+            ],
+            "DBdenied": [
+                "mysql",
+                "information_schema",
+                "performance_schema"
+            ],
+            "MySQLEventSkip": [
+                "testDB1_testTable1_testColumn1"
+                "testDB1_testTable1_testColumn2"
+                "testDB1_testTable2_testColumn5"
+                "testDB1_testTable2_testColumn6"
+                "testDB1_testTable3_testColumn9"
+                "testDB2_testTable3_testColumn4"
+                "testDB2_testTable3_testColumn5"
+                "testDB2_testTable3_testColumn6"
+                "testDB2_testTable3_testColumn7"
+                "testDB3_testTable1_testColumn1"
+                "testDB3_testTable1_testColumn2"
+                "testDB3_testTable1_testColumn3"
+            ]
+        }
+    }
 }
+
 ```
 ### Run :
 
@@ -62,4 +84,4 @@ _in progress....._
     - > On MySQLevent when it satisfies by settings in [**`.config.json`**]
 
 - Collect HTTP socket items and there values to `SocketMessageQueue`
-    - > Send the collected items in one request after some timelimit or when we try to update some value
+    - > Send the collected items in one request after some `timelimit` or `on add existing key`
