@@ -77,7 +77,7 @@
 - browse to http://127.0.0.1:3000 or http://localhost:3000
 
 
-### Goal :
+### Intention : <small>*( realtime database values on a websites served by a nodeJS webserver )*</small>
 - Create HTTP socket event listeners ( for all columns in database ) by query the MySQL server :
     - > Get all `Databases`
     - > Get all `Tables` from found `Databases`.
