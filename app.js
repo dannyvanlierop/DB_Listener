@@ -154,10 +154,8 @@ io.sockets.on('connection', function (socket)
 });
 
 //Timers
-//ServerOnlineSeconds
-setInterval(function(){ io.sockets.emit("ServerOnlineSeconds", SMQ.ServerOnlineSeconds++ ); }, 1000);
-//ServerOnlineSecondsMilli
-setInterval(function(){ io.sockets.emit("ServerOnlineSecondsMilli", SMQ.ServerOnlineSecondsMilli++ ); }, 1);
+if(config.System.ServerOnlineSecondsEnabled)setInterval(function(){ io.sockets.emit("ServerOnlineSeconds", SMQ.ServerOnlineSeconds++ ); }, 1000);
+if(config.System.ServerOnlineSecondsMilliEnabled)setInterval(function(){ io.sockets.emit("ServerOnlineSecondsMilli", SMQ.ServerOnlineSecondsMilli++ ); }, 1);
 //SocketMessageQueueTime
 setInterval(function(){ io.sockets.emit("SocketMessageQueueTime", SMQ.Queue.Time++ ); }, 1);
 //Item for -> Meta and duplicate key for test
