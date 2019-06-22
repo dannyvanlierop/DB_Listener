@@ -89,7 +89,7 @@
 # ***Warning*** :
 - > This script will run on **`all MySQL events`**
 - > configure **`.config.json`** to include and exclude items
-C:\Program Files\nodejs
+
 # Run :
 - > node `./app.js`
 
