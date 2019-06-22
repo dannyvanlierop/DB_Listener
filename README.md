@@ -1,17 +1,17 @@
 # DB_Listener
 
 
-### Todo :
+## Todo :
 
 - _in progress....._ 
   - Auto generate <`html`></`html`> content  with tags
   - Cleanup files and Finish this Readme
 
-### Environment :
+## Environment :
 - node v8.16.0
 - npm 6.4.1
 
-### Setup :
+## Setup :
 
 - Configuration file
   - Rename **`config.json`** to **`.config.json`**
@@ -71,13 +71,16 @@
         }
 
     ```
-### Run :
+## Run :
 
 - node `./app.js`
+
+## Result :
+
 - browse to http://127.0.0.1:3000 or http://localhost:3000
 
-
-### Intention : <small>*( realtime database values on a websites served by a nodeJS webserver )*</small>
+## Intention : 
+*( realtime database values on a websites served by a nodeJS webserver )*
 - Create HTTP socket event listeners ( for all columns in database ) by query the MySQL server :
     - > Get all `Databases`
     - > Get all `Tables` from found `Databases`.
@@ -90,3 +93,7 @@
 
 - Collect HTTP socket items and there values to `SocketMessageQueue`
     - > Send the collected items in one request after some `timelimit` or `on add existing key`
+
+## ***Warning*** :
+- > This script will run on **`all MySQL events`**
+- > configure **`.config.json`** to exclude mass queries
