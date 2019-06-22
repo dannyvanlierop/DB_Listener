@@ -89,11 +89,11 @@
 # ***Warning*** :
 - > This script will run on **`all MySQL events`**
 - > configure **`.config.json`** to include and exclude items
-
+C:\Program Files\nodejs
 # Run :
-
-- node `./app.js`
+- > node `./app.js`
 
 # Result :
 
-- browse to http://127.0.0.1:3000 or http://localhost:3000
+- Browse with your favorite browser to :
+    > http://127.0.0.1:3000 or http://localhost:3000 
