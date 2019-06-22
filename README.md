@@ -8,7 +8,7 @@ _in progress....._
 
 ### Setup :
 
-- Create configuration file ( **.config.json** ) with the following content:
+- Create configuration file ( **`.config.json`** ) with the following content:
 
 ```JSON
 {
@@ -46,17 +46,17 @@ _in progress....._
 ```
 ### Run :
 
-- node ./app.js
-- browse to http://127.0.0.1:3000
+- node ./app.js`
+- browse to http://127.0.0.1:3000 or http://localhost:3000
 
 
 ### Goal :
-- Create HTTP socket event listeners ( for all columns in database ) :
-    - > Get all Databases
-    - > Get all Tables from found Databases.
-    - > Get all Columns from found Tables.
-    - > Create emitters with patern : `databaseName_tableName_columnName`
-    - > Init value, by getting last value from current column, where column  `id` is not null (desc sorted).
+- Create HTTP socket event listeners ( for all columns in database ) by query the MySQL server :
+    - > Get all `Databases`
+    - > Get all `Tables` from found `Databases`.
+    - > Get all `Columns` from found `Tables`.
+    - > Create `emitter` from found information with patern [ `databaseName_tableName_columnName` ]
+    - > Init `emitter` value by getting last value from current column(`columnName`), where column(`id`) is `not null` (`desc sorted`).
 
 - Trigger HTTP socket event listener
-    - > On accepted MySQLevent
+    - > On MySQLevent when it satisfies by settings in [**`.config.json`**]
