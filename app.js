@@ -54,89 +54,219 @@ console.log("listening on port " + config.WebServer.HTTPport)
 var io = require('socket.io').listen(server); //Create websocket server
 io.sockets.emit('disconnect'); // Renew old connections that still exist
 
+// for DEBUG catch all  //Updated solution for socket.io-client 1.3.7, catch-all
+// for DEBUG catch all  var onevent = socket.onevent;
+// for DEBUG catch all  socket.onevent = function (packet) {
+// for DEBUG catch all      var args = packet.data || [];
+// for DEBUG catch all      onevent.call (this, packet);    // original call
+// for DEBUG catch all      packet.data = ["*"].concat(args);
+// for DEBUG catch all      onevent.call(this, packet);      // additional call to catch-all
+// for DEBUG catch all  };
+// for DEBUG catch all  socket.on("*",function(event,data) {
+// for DEBUG catch all      alert(event);
+// for DEBUG catch all      alert(data);
+// for DEBUG catch all  });
+
 /**********************\
 | SocketMessageQueue |#######################################################
 \**********************/// WebsocketsQueue / EmitterQueue
-
+// SMQ.Message.Add gets triggered at first
 var SMQ = {
     /* SocketMessageQueue / EmitterQueue */
     "ServerOnlineSeconds": 0,
-    "ServerOnlineSecondsMilli": 0, 
- 
     "Message": {
         "Content": {},
         "Id" : 0,
         "Queue" :{},
         "Add": function (sKey, sValue) {
-            if (SMQ.Message.Content[sKey] !== undefined) SMQ.Queue.Send(); //Send the message when the sKey already exists, we don't updates values in an existing message.
-            SMQ.Message.Content[sKey] = sValue; //Add the value
+
+            var keyNotExists = SMQ.Message.Content[sKey] === undefined;
+           
+            process.stdout.write(" \n\t-> Message Add " + ( keyNotExists ? "Done" : "Skipped -> Queue Key Exists, Empty Queue First" ) );
+            process.stdout.write( ( SMQ.Queue.TimeLimitEnabled ? "" : " -> Timelimit disabled" ) );
+
+            function EmptyQueue(return_EmptyQueue_Done)
+            {
+                //Send the message when the sKey already exists, we don't updates values in an existing message.
+                SMQ.Queue.Send(
+                    function(return_Queue_Send_Done)
+                    {
+                        return_EmptyQueue_Done();
+                    }
+                );
+            }
+
+            //Add the new item
+            if(keyNotExists)
+            {
+                SMQ.Message.Content[sKey] = sValue; //Add the value
+            }
+            else //Item exist, send queue, add item
+            {
+                EmptyQueue( //Queue is empty do something with results
+                    function()
+                    {
+                        SMQ.Message.Content[sKey] = sValue; //Add the value
+                    }
+                );
+            }
+
+            if(!SMQ.Queue.TimeLimitEnabled)
+            {
+                EmptyQueue( //Queue is empty do something with results
+                    function()
+                    {                        
+                    }
+                );
+            }
         },
-        "Reset": function () {
-            SMQ.Message.Content = {};
+        "Reset": function (return_Message_Reset_Done) {
+            
+            SMQ.Message.Check(
+                function(return_Message_Check_Done){
+                    if(return_Message_Check_Done)
+                    {
+                        SMQ.Message.Content = {};
+                        process.stdout.write(" -> Message Reset Done");
+                    }
+                    //process.stdout.write(" -> Message Reset " + ( return_Message_Check_Done ? "Done" : "Skipped" ) );
+                    return_Message_Reset_Done(return_Message_Check_Done);
+                }
+            );
+ 
         },
         "Init": function () {
-            
-            //Reset all values to there defaults
-            SMQ.Message.Reset();
 
-            //Set here the default options for a new message
-            SMQ.Message.Id++;
-        }   
+            //Reset all values to there defaults
+            SMQ.Message.Reset(
+                function(return_Message_Reset_Done)
+                {
+                    if(return_Message_Reset_Done)
+                    {
+                        //Set here the default options for a new message
+                        SMQ.Message.Id++;
+                        process.stdout.write("\n -> Message Init Done");
+                    }
+                    //process.stdout.write(" -> Message Init " + ( return_Message_Reset_Done ? "Done" : "Skipped" ) );
+                }
+            );
+        },
+        "Check": function(return_Message_Check_Done)
+        {
+            return_Message_Check_Done( config.Sockets.Queue.SendEmptyObjectContent ? true : Object.keys(SMQ.Message.Content).length > 0 );
+        }
     },
     "Queue":
     {
         "Time" : 0,
-        "TimeLimit" : 15000, // The maximum time that a message can be in the queue  //config.WebServer.HTTPport
-        "Send": function () {
-
-            //Add the current QueueTime of this message to the message
+        "TimeLimitEnabled" : config.Sockets.Queue.TimeLimitEnabled !== undefined?config.Sockets.Queue.TimeLimitEnabled:true,
+        "TimeLimit" : config.Sockets.Queue.TimeLimit !== undefined?config.Sockets.Queue.TimeLimit:60, // The maximum time that a message can be in the queue  //config.WebServer.HTTPport
+        "Finalize" : function(return_Queue_Finalize_Done)
+        {
+            process.stdout.write(" -> Queue finalize");
+              //Add the current QueueTime of this message to the message
             SMQ.Message.Queue.Time = SMQ.Queue.Time;
 
-            //Send the message
-            io.sockets.emit("JSONforClient", SMQ.Message);
-    
-            //Reset the QueueTimer
-            SMQ.Timer.Reset()
+            if(SMQ.Queue.TimeLimitEnabled)
+            {
+                SMQ.Message.Queue.TimeLimit = SMQ.Queue.TimeLimit;
+
+                var timeLimitReached = SMQ.Queue.TimeLimit < SMQ.Message.Queue.Time;
+                //process.stdout.write(" -> check Queue TimeLimit " + ( timeLimitReached ? "Reached" : "Ok" ) );
+                if(timeLimitReached)//Check if we have timer problems
+                {
+                    //Options for messages that are send because of queueTime condtion.
+                    SMQ.Message.Queue.TimeLimitReached = true;
+                    //process.stdout.write(" -> Message Init " + ( timeLimitReached ? "Done" : "Skipped" ) );
+                }
+                else
+                {
+                    if(SMQ.Message.Queue.TimeLimit)delete SMQ.Message.Queue.TimeLimit;
+                    if(SMQ.Message.Queue.TimeLimitReached)delete SMQ.Message.Queue.TimeLimitReached;
+                }
+            }
+            return_Queue_Finalize_Done(true);
+        },
+        "Send": function (return_Queue_Send_Done)
+        {           
+            SMQ.Message.Check(
+
+                function(return_Message_Check_Done){
+
+                    SMQ.Queue.Finalize(
+                        function(return_Queue_Finalize_Done){
+
+                            var checkedAndFinalized = return_Message_Check_Done && return_Queue_Finalize_Done;
+                            if(checkedAndFinalized)
+                            {
+                                //Send the message
+                                io.sockets.emit("JSONforClient", SMQ.Message);
+                            }        
+                            process.stdout.write( " -> Queue Send " + ( checkedAndFinalized ? "Done" : " Skipped(Empty)" ) );
+                            SMQ.Message.Init();                            
+                            return_Queue_Send_Done(checkedAndFinalized);
+                        }
+                    );
+                    //Reset the QueueTimer
+                    SMQ.Timer.Reset()
+                }
+            );  
         }
     },
     "Timer":
     {
         "Process": "",  //Used to bind the Timer
         "Enabled": false,   //Used to cache the status
-        "Check": function () {  //Used to check the status
+        "Check": function (return_Timer_Check_Done) {  //Used to check the status
             SMQ.Timer.Enabled = typeof SMQ.Timer.Process === 'function';
-            process.stdout.write(" Timer Check - Found: " + SMQ.Timer.Enabled);
-            return SMQ.Timer.Enabled;
+            process.stdout.write(" -> Timer " + ( SMQ.Timer.Enabled ? "found" : "not found" ) );
+            return_Timer_Check_Done(SMQ.Timer.Enabled);
         },
-        "Clear": function () {  //Used to clear the existing Timer
+        "Clear": function (return_TimerClear_Done) {  //Used to clear the existing Timer
             clearInterval(SMQ.Timer.Process);
             SMQ.Queue.Time = 0;
-            process.stdout.write("\nTimer Clear " + (SMQ.Timer.Check() ? " Failed! " : " Ok! "));
+            process.stdout.write(" -> Timer " + ( typeof SMQ.Timer.Process !== 'function' ? "Cleared" : "clear ERROR" ) );
+            return_TimerClear_Done();
         },
         "Create": function () { //Used to create a new Timer
-            if (!SMQ.Timer.Check()) {
-                //Empty/Init the New message
-                SMQ.Message.Init();    
-                SMQ.Timer.Process = setInterval(
 
-                    //setInterval meets the QueueTime condition.
-                    function () {
-
-                        //Options for messages that are send because of queueTime condtion.
-                        SMQ.Message.Queue.TimeLimit = SMQ.Queue.TimeLimit;
-                        SMQ.Message.Queue.TimeLimitReached = true;       
-
-                        //This message does reach the QueueTime limit.
-                        SMQ.Queue.Send();
-                    },
-                    SMQ.Queue.TimeLimit
-                );
-                console.log(" Timer Create " + SMQ.ServerOnlineSeconds);
-            }
+            SMQ.Timer.Check(
+                function(return_Timer_Check_Done){
+               //SMQ.Queue.TimeLimit         
+                    if(!return_Timer_Check_Done)
+                    {
+                        SMQ.Timer.Process = setInterval(
+                        
+                            //setInterval meets the QueueTime condition.
+                            function () {
+                                process.stdout.write("\n\t -> Queue interval reached TimeLimit -> Trigger Send queue");
+                                //This message does reach the QueueTime limit.
+                                SMQ.Queue.Send(
+                                    function(return_Queue_Send_Done){
+                                        
+                                    }
+                                ); 
+                            },
+                            SMQ.Queue.TimeLimit
+                        );
+                    }
+                    process.stdout.write(" -> Timer " + ( return_Timer_Check_Done ? "Skipped" : "Started -> " + SMQ.ServerOnlineSeconds + " Seconds" ) ); 
+                }
+            )
+            //Empty/Init the New message
+            //SMQ.Message.Init();
         },
         "Reset": function () {  //Used to reset the Timer
-            SMQ.Timer.Clear(); //Clear old Timer
-            SMQ.Timer.Create();   //Start new Timer
+            //process.stdout.write("\n\t -> Timer Reset");
+            
+            if(SMQ.Queue.TimeLimitEnabled)
+            {
+                SMQ.Timer.Clear(    //Clear old Timer
+                    function(){
+                        SMQ.Timer.Create();   //Start new Timer
+                    }
+                ); 
+            }
         },
     }
 };
@@ -144,31 +274,37 @@ var SMQ = {
 //Emit values on page refresh or first load
 io.sockets.on('connection', function (socket)
 {
-    process.stdout.write("\nclient connected");
-    
-    socket.emit('request', /* */); // emit an event to the socket
-    io.emit('broadcast', /* */); // emit an event to all connected sockets
-    socket.on('reply', function(){ /* */ }); // listen to the event
+    process.stdout.write("\nclient connected\n");
 
-    SMQ.Queue.Send();
+    MySQLServerInit();
+
 });
 
+function Millis()
+{
+    return new Date().getMilliseconds();
+}
+
+
+//setInterval(function(){ io.sockets.emit("SocketMessageQueueTime", SMQ.Queue.Time++ ); }, 1);
 //Timers
 if(config.System.ServerOnlineSecondsEnabled)setInterval(function(){ io.sockets.emit("ServerOnlineSeconds", SMQ.ServerOnlineSeconds++ ); }, 1000);
-if(config.System.ServerOnlineSecondsMilliEnabled)setInterval(function(){ io.sockets.emit("ServerOnlineSecondsMilli", SMQ.ServerOnlineSecondsMilli++ ); }, 1);
+if(config.System.ServerOnlineSecondsMilliEnabled)setInterval(function(){ io.sockets.emit("ServerOnlineSecondsMilli",Millis()); }, 1);
+
 //SocketMessageQueueTime
 setInterval(function(){ io.sockets.emit("SocketMessageQueueTime", SMQ.Queue.Time++ ); }, 1);
+
 //Item for -> Meta and duplicate key for test
 //setInterval(function(){ SMQ.Queue.Add("TestKey","TestVal"); }, 2000);
 
 function emitterUpdate(emitterName, emitterValue)
 {
-    process.stdout.write("\n Socket Emitter Update -> [ " + emitterName + " ] ");
-    io.sockets.emit('init', emitterName);
     io.sockets.emit(emitterName, emitterValue);
+    SMQ.Message.Add(emitterName,emitterValue)
 
     //Debug
-    SMQ.Message.Add(emitterName,emitterValue)
+    //process.stdout.write(emitterName);
+    //console.log(emitterValue);
 }
 
 /**************\
@@ -254,40 +390,43 @@ function mysqlGetValue(DBname, DBtable, sColumn, return_Value_Cell)
     })
 }
 
-mysqlGetDatabases(   //<--- This function finished, do somthing with results(return_Value_DB).
+function MySQLServerInit()
+{
+    mysqlGetDatabases(   //<--- This function finished, do somthing with results(return_Value_DB).
 
-    function (return_Value_DB) {
-        mysqlGetTables(   //<--- This function finished, do somthing with results(return_Value_Table).
+        function (return_Value_DB) {
+            mysqlGetTables(   //<--- This function finished, do somthing with results(return_Value_Table).
 
-            return_Value_DB,
-            function (return_Value_Table) {
-                mysqlGetColumns(   //<--- This function finished, do somthing with results(return_Value_Column).
+                return_Value_DB,
+                function (return_Value_Table) {
+                    mysqlGetColumns(   //<--- This function finished, do somthing with results(return_Value_Column).
 
-                    return_Value_DB,
-                    return_Value_Table,
-                    function (return_Value_Column) {
+                        return_Value_DB,
+                        return_Value_Table,
+                        function (return_Value_Column) {
 
-                        //Init each columnName/itemName as emiter for client
-                        var emitterName = return_Value_DB + "_" + return_Value_Table + "_" + return_Value_Column;
+                            //Init each columnName/itemName as emiter for client
+                            var emitterName = return_Value_DB + "_" + return_Value_Table + "_" + return_Value_Column;
 
-                        //Init this value when it meets the config requirements
-                        if (config.MySQL.Server.MySQLEventSkip.indexOf(emitterName) === -1) {
+                            //Init this value when it meets the config requirements
+                            if (config.MySQL.Server.MySQLEventSkip.indexOf(emitterName) === -1) {
 
-                            mysqlGetValue(   //<--- This function finished, do somthing with results(return_Value_Cell).
-                                return_Value_DB,
-                                return_Value_Table,
-                                return_Value_Column,
-                                function (return_Value_Cell) {
-                                    process.stdout.write(" -> ( " + return_Value_Cell + " ) ");
-                                }
-                            )
+                                mysqlGetValue(   //<--- This function finished, do somthing with results(return_Value_Cell).
+                                    return_Value_DB,
+                                    return_Value_Table,
+                                    return_Value_Column,
+                                    function (return_Value_Cell) {
+                                        process.stdout.write(" -> ( " + return_Value_Cell + " ) ");
+                                    }
+                                )
+                            }
                         }
-                    }
-                )
-            }
-        );
-    }
-);
+                    )
+                }
+            );
+        }
+    );
+}
 
 /**************\
 | MySQL events |###############################################################
@@ -332,7 +471,7 @@ const MySQLEventsInit = async () => {
                         event.schema, 
                         event.table, 
                         event.affectedColumns[iPos],
-                        function () { process.stdout.write(" -> < " + event.timestamp + " > "); });//no process of callback, the value is already set inside this function.
+                        function () { /* process.stdout.write(event.type + " -> < " + event.timestamp + " > "); */ });//no process of callback, the value is already set inside this function.
                 }
             }
         },
